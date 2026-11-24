@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,13 +8,13 @@ version = "1.0.0"
 description = "PSYCHO-C.A.R.L.A. (Coding, Automated Reasoning, & Language Assistant) — Personal AI on Personal Devices. A model-agnostic local-first agent framework with a C.A.R.L.A. persona, CPU-only dual-channel voice, and a holographic command HUD."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "Apache-2.0" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "PSYCHO-C.A.R.L.A. Project" }]
 keywords = ["ai", "agents", "llm", "local-first", "mcp", "voice", "windows-11"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: Apache Software License",
   "Operating System :: Microsoft :: Windows 11",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",

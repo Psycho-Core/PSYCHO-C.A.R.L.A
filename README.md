@@ -1087,7 +1087,7 @@ integration suite.
 
 ## License
 
-Apache-2.0.
+MIT — see [LICENSE](LICENSE). This is original code; OpenJarvis was used only as a feature checklist.
 
 ---
 

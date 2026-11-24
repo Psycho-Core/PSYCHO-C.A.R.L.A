@@ -7,12 +7,11 @@ Part of the built-in channel set. See
 
 from __future__ import annotations
 
-import json
 
 from typing import Any, Dict, List, Optional
 
 from .base import BaseChannel, ChannelMessage, ChannelStatus
-from .httpclient import ChannelError, build_url, request_json, truncate
+from .httpclient import ChannelError, build_url, request_json
 from .registry import register_channel
 
 

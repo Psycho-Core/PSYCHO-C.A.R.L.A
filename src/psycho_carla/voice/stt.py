@@ -10,15 +10,11 @@ Layer: Pillar 3 / Persona.
 
 from __future__ import annotations
 
-import queue
-import shutil
-import subprocess
-import sys
 import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 

@@ -14,14 +14,13 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
-import os
 import time
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..core.config import CarlaConfig, load_config

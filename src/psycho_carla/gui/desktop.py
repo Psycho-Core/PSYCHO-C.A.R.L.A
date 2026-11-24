@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "server" / "web" / "templates"
 _STATIC_DIR = Path(__file__).parent.parent / "server" / "web" / "static"

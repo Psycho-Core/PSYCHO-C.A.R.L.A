@@ -9,10 +9,9 @@ from __future__ import annotations
 
 import json
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from .base import ChannelMessage
-from .httpclient import ChannelError, build_url, request_json, truncate
 from .registry import register_channel
 from .rest_base import RestChatChannel
 

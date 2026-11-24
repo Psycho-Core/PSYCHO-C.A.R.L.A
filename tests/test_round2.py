@@ -18,7 +18,6 @@ Covers the parity gaps closed in the second pass:
 from __future__ import annotations
 
 import base64
-import json
 import os
 import pathlib
 import sys
@@ -2009,7 +2008,7 @@ class TestNativeEngine:
 
     def test_the_native_catalog_lists_models(self):
         from psycho_carla.intelligence.model_catalog import (
-            list_models, find_model_spec,
+            list_models,
         )
         native = list_models(engine="native_onnx")
         assert native

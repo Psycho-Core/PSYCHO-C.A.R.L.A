@@ -658,7 +658,7 @@ function appendUser(text) {
 
 function appendAssistant(data) {
   const msg = el('div', 'msg assistant');
-  msg.appendChild(el('div', 'msg-avatar', 'F'));
+  msg.appendChild(el('div', 'msg-avatar', 'C'));
   const body = el('div', 'msg-body');
   body.appendChild(el('div', 'msg-role', 'C.A.R.L.A.'));
 
@@ -1428,4 +1428,151 @@ function applyRoute() {
 window.addEventListener('hashchange', applyRoute);
 document.addEventListener('DOMContentLoaded', function () {
   setTimeout(applyRoute, 250);
+});
+
+
+/* --------------------------------------------------------------------------
+   Declutter, setup banner, header actions, and the new Model Manager tools
+   -------------------------------------------------------------------------- */
+function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* private mode */ } }
+
+/* Every panel collapses when its header is clicked; the choice is remembered. */
+function initCollapsiblePanels() {
+  document.querySelectorAll('.main .panel').forEach(function (panel) {
+    const title = panel.querySelector('.panel-title');
+    const head = panel.querySelector('.panel-head');
+    if (!title || !head) return;
+    const key = 'carla.collapsed.' + title.textContent.trim();
+    const saved = lsGet(key);
+    const collapsed = saved === null ? panel.dataset.collapsed === '1' : saved === '1';
+    panel.classList.toggle('collapsed', collapsed);
+    head.addEventListener('click', function (ev) {
+      if (ev.target.closest('button')) return;       // header buttons keep working
+      const now = panel.classList.toggle('collapsed');
+      lsSet(key, now ? '1' : '0');
+    });
+  });
+}
+
+/* A filter box above the (long) agent list. */
+function initAgentFilter() {
+  const list = $('agentList');
+  if (!list || $('agentFilter')) return;
+  const input = document.createElement('input');
+  input.type = 'text'; input.id = 'agentFilter'; input.placeholder = 'Filter agents…';
+  input.className = 'agent-filter';
+  list.parentNode.insertBefore(input, list);
+  input.addEventListener('input', function () {
+    const q = input.value.trim().toLowerCase();
+    list.querySelectorAll('.agent-item').forEach(function (item) {
+      item.style.display = !q || item.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+}
+
+async function postJSON(path, body) {
+  const r = await fetch(path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  });
+  let data = {};
+  try { data = await r.json(); } catch (e) { /* empty */ }
+  if (!r.ok) throw new Error(data.detail || data.message || ('HTTP ' + r.status));
+  return data;
+}
+
+function mmSay(text) { const s = $('mmStatus'); if (s) s.textContent = text; }
+
+async function freeMemory() {
+  try {
+    const r = await postJSON('/api/models/free');
+    const msg = r.message + ' — ' + r.free_gb + ' GB free';
+    mmSay(msg); toastLine(msg);
+    if (typeof mmRefreshLocal === 'function') mmRefreshLocal();
+  } catch (e) { mmSay('Free memory failed: ' + e.message); toastLine('Free memory failed: ' + e.message); }
+}
+
+/* Small non-blocking message in the console line. */
+function toastLine(text) {
+  const st = $('coreTranscript');
+  if (st) st.textContent = text;
+}
+
+async function refreshSetupBanner() {
+  const banner = $('setupBanner');
+  if (!banner) return;
+  try {
+    const s = await api('/api/setup');
+    if (lsGet('carla.setupDismissed') === '1' || !s.needs_setup) { banner.hidden = true; return; }
+    $('setupReason').textContent = 'C.A.R.L.A. is answering with its built-in fallback' +
+      (s.reason ? ' (' + s.reason + ')' : '') + '.';
+    $('btnSetupAuto').disabled = !s.native_pick;
+    banner.hidden = false;
+  } catch (e) { banner.hidden = true; }
+}
+
+async function mmCustom() {
+  const ref = ($('mmCustomRef').value || '').trim();
+  if (!ref) { mmSay('Enter a model name first.'); return; }
+  mmSay('Downloading ' + ref + ' … this can take a while.');
+  try {
+    const r = await postJSON('/api/models/custom', {
+      engine: $('mmEngine').value, ref: ref, filename: ($('mmCustomFile').value || '').trim(),
+    });
+    mmSay((r.ok ? '✓ ' : '✗ ') + r.message);
+    if (typeof mmRefreshLocal === 'function') mmRefreshLocal();
+  } catch (e) { mmSay('✗ ' + e.message); }
+}
+
+async function mmRemote() {
+  mmSay('Contacting the other PC …');
+  try {
+    const r = await postJSON('/api/models/remote', {
+      host: $('mmRemHost').value, model: $('mmRemModel').value,
+      kind: $('mmRemKind').value, tier: $('mmRemTier').value,
+    });
+    mmSay('✓ ' + r.message + ' — restart the console to use it.');
+  } catch (e) { mmSay('✗ ' + e.message); }
+}
+
+async function mmDeviceInit() {
+  const sel = $('mmDevice');
+  if (!sel) return;
+  try {
+    const g = await api('/api/models/device');
+    sel.value = g.device || 'cpu';
+    sel.title = g.gpu_available ? 'GPU provider found: ' + g.providers.join(', ')
+      : 'No GPU provider installed — pip install onnxruntime-directml (after removing onnxruntime)';
+  } catch (e) { /* manager not open */ }
+  sel.onchange = async function () {
+    try { const r = await postJSON('/api/models/device', { device: sel.value }); mmSay('✓ ' + r.message); }
+    catch (e) { mmSay('✗ ' + e.message); }
+  };
+}
+
+async function autoPick() {
+  const btn = $('btnSetupAuto');
+  if (btn) btn.disabled = true;
+  toastLine('Picking, downloading and starting the best model for this PC …');
+  try {
+    const r = await postJSON('/api/models/auto');
+    toastLine('✓ ' + r.model_id + ' ready'); refreshSetupBanner();
+  } catch (e) { toastLine('✗ ' + e.message); if (btn) btn.disabled = false; }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  initCollapsiblePanels();
+  const bind = function (id, fn) { const b = $(id); if (b) b.addEventListener('click', fn); };
+  bind('btnHdrModels', function () { mmOpen(); mmDeviceInit(); });
+  bind('btnModels', mmDeviceInit);
+  bind('btnFreeMem', freeMemory);
+  bind('mmFree', freeMemory);
+  bind('btnExport', function () { window.location.href = '/api/export?format=markdown'; });
+  bind('mmCustomGo', mmCustom);
+  bind('mmRemGo', mmRemote);
+  bind('btnSetupAuto', autoPick);
+  bind('btnSetupModels', function () { mmOpen(); mmDeviceInit(); });
+  bind('btnSetupDismiss', function () { lsSet('carla.setupDismissed', '1'); $('setupBanner').hidden = true; });
+  setTimeout(function () { initAgentFilter(); refreshSetupBanner(); }, 600);
 });

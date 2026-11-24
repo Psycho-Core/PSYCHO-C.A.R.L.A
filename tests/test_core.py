@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from psycho_carla.agents.builtin import BUILTIN_AGENTS
 from psycho_carla.agents.scheduler import CronSchedule
-from psycho_carla.core.config import config_from_dict, load_config
+from psycho_carla.core.config import config_from_dict
 from psycho_carla.core.persona import Persona, condense_for_speech, looks_like_code
 from psycho_carla.core.runtime import CarlaRuntime
 from psycho_carla.core.telemetry import Telemetry
@@ -29,7 +29,6 @@ from psycho_carla.learning.traces import TraceLogger
 from psycho_carla.memory.store import Embedder, MemoryStore
 from psycho_carla.providers.base import GenerationResult, Message, Usage
 from psycho_carla.providers.router import ModelRouter
-from psycho_carla.tools.registry import ToolRegistry
 
 
 # --------------------------------------------------------------------------- #
@@ -576,7 +575,7 @@ class TestConfig:
         assert cfg.agent.context_from_memory is False
 
     def test_config_roundtrip(self, tmp_home):
-        from psycho_carla.core.config import dump_toml, save_config
+        from psycho_carla.core.config import dump_toml
 
         cfg = config_from_dict(
             {"tiers": {"fast_tier": {"provider": "ollama", "model": "m"}}},
@@ -1259,3 +1258,22 @@ class TestSkillsCatalog:
         assert sc.auto_load is True
         assert hasattr(sc, "max_skills")
         assert hasattr(sc, "validate_on_load")
+
+
+def test_ask_passes_history_to_the_agent(runtime):
+    """Regression: history given to Runtime.ask was silently dropped."""
+    from psycho_carla.agents.base import BaseAgent
+
+    seen = {}
+    orig = BaseAgent.run
+
+    def spy(self, prompt, **kw):
+        seen.update(kw)
+        return orig(self, prompt, **kw)
+
+    BaseAgent.run = spy
+    try:
+        runtime.ask("hi", history=[Message(role="user", content="earlier")])
+    finally:
+        BaseAgent.run = orig
+    assert [m.content for m in seen.get("history", [])] == ["earlier"]

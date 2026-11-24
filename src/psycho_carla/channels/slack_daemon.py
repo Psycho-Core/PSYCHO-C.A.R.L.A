@@ -31,7 +31,6 @@ import threading
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from .base import ChannelMessage, ChannelStatus
 from .registry import register_channel
 from .slack import SlackChannel
 

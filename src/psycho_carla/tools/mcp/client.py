@@ -11,16 +11,13 @@ Layer: Pillar 4 (Tools & Memory).
 
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import shutil
-import sys
 import threading
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from ..registry import ToolRegistry, get_registry
 

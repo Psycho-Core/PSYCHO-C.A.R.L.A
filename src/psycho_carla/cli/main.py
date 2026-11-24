@@ -32,7 +32,6 @@ from pathlib import Path
 from typing import Any
 
 from ..core.config import (
-    CONFIG_FILENAME,
     CarlaConfig,
     default_config_path,
     load_config,
@@ -803,7 +802,7 @@ def cmd_skill(args: argparse.Namespace) -> int:
         if not matches:
             print(_c(f"\n  No skills matched '{args.query}'\n", "dim"))
             return 0
-        print(_c(f"\n  Matching skills\n", "cyan"))
+        print(_c("\n  Matching skills\n", "cyan"))
         for match in matches:
             print(f"  {_c(match.skill.name, 'cyan'):<28} score {match.score:.2f}")
             print(f"    {match.skill.description}")
@@ -858,7 +857,7 @@ def cmd_skill(args: argparse.Namespace) -> int:
                      "green"))
             return 0
         bundled = BundledSource().list()
-        print(_c(f"\n  Skill sources\n", "cyan"))
+        print(_c("\n  Skill sources\n", "cyan"))
         print(f"    bundled: {len(bundled)} skills "
               f"(install-on-first-use)")
         print(_c("    Remote sources: [skills].sources in the config "
@@ -1556,6 +1555,28 @@ def cmd_tunnel(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export(args: argparse.Namespace) -> int:
+    """Export conversations (markdown/json) or a fine-tuning dataset (training)."""
+    from ..core.config import load_config
+    from ..core.exports import export_sessions, export_training_jsonl
+    from ..memory.store import MemoryStore
+
+    config = load_config()
+    memory = MemoryStore(config.memory_db)
+    if args.format == "training":
+        text = export_training_jsonl(memory, limit=args.limit)
+    else:
+        text = export_sessions(memory, args.format, args.session, args.limit)
+    if args.output:
+        from pathlib import Path
+
+        Path(args.output).write_text(text, encoding="utf-8")
+        print(_c(f"\n  ✓ wrote {args.output}\n", "green"))
+    else:
+        print(text)
+    return 0
+
+
 def cmd_model(args: argparse.Namespace) -> int:
     """Browse the model catalog and download models."""
     from ..intelligence.model_catalog import (
@@ -1571,6 +1592,60 @@ def cmd_model(args: argparse.Namespace) -> int:
     )
 
     action = args.model_cmd
+
+    if action == "custom":
+        from ..intelligence.model_manager import pull_custom
+
+        r = pull_custom(args.engine, args.ref, args.file)
+        print(_c(f"\n  {'✓' if r.ok else '✗'} {r.message}\n", "green" if r.ok else "amber"))
+        return 0 if r.ok else 1
+
+    if action == "free":
+        from ..intelligence.model_lifecycle import lifecycle
+
+        r = lifecycle.free_memory()
+        print(_c(f"\n  ✓ {r['message']} — {r['free_gb']} GB free (+{r['freed_gb']} GB)\n", "green"))
+        return 0
+
+    if action == "device":
+        from ..intelligence.model_manager import set_native_device
+        from ..providers.adapters.native_onnx import gpu_status
+
+        if args.device:
+            r = set_native_device(args.device)
+            print(_c(f"\n  {'✓' if r['ok'] else '✗'} {r.get('message') or r.get('error')}\n",
+                     "green" if r["ok"] else "amber"))
+            return 0 if r["ok"] else 1
+        g = gpu_status()
+        print(f"\n  device: {g['device']}   GPU provider available: {g['gpu_available']}"
+              f"   providers: {', '.join(g['providers']) or 'onnxruntime not installed'}\n")
+        return 0
+
+    if action == "remote":
+        from ..intelligence.model_manager import add_remote_tier
+
+        r = add_remote_tier(args.host, args.model, tier=args.tier, kind=args.kind, port=args.port)
+        print(_c(f"\n  {'✓' if r['ok'] else '✗'} {r.get('message') or r.get('error')}\n",
+                 "green" if r["ok"] else "amber"))
+        return 0 if r["ok"] else 1
+
+    if action == "auto":
+        from ..intelligence.model_manager import (
+            activate_native_model, best_native_model,
+        )
+
+        spec = best_native_model()
+        if spec is None:
+            print(_c("\n  ✗ not enough free RAM for any native model\n", "amber"))
+            return 1
+        print(_c(f"\n  Best native fit: {spec.name}\n", "cyan"))
+        r = pull_model(spec.model_id, engine="native_onnx")
+        if not r.ok:
+            print(_c(f"  ✗ {r.message}\n", "amber"))
+            return 1
+        a = activate_native_model(spec.model_id, args.tier)
+        print(_c(f"  ✓ {a.get('message') or a.get('error')}\n", "green" if a.get("ok") else "amber"))
+        return 0 if a.get("ok") else 1
 
     if action == "native":
         from ..intelligence.model_manager import activate_native_model
@@ -1831,7 +1906,7 @@ def cmd_channels(args: argparse.Namespace) -> int:
             return 1
 
         print(_c(f"\n  ✓ Configured '{channel_id}'.\n", "green"))
-        print(f"    Start the console with 'carla serve' to bring it online.\n")
+        print("    Start the console with 'carla serve' to bring it online.\n")
         return 0
 
     if action == "remove":
@@ -2219,7 +2294,6 @@ MCP_PRESETS: dict[str, dict[str, Any]] = {
 
 def _cmd_mcp_add(args: argparse.Namespace) -> int:
     """Quick MCP server setup — writes the server into the config file."""
-    import tomllib
 
     cfg = load_config(args.config)
     name = args.name
@@ -2351,7 +2425,7 @@ def cmd_auth(args: argparse.Namespace) -> int:
         key = generate_api_key()
         print(_c("\n  Generated API key:\n", "cyan"))
         print(f"    {key}\n")
-        print(_c(f"  Export it before starting the server:", "dim"))
+        print(_c("  Export it before starting the server:", "dim"))
         print(f'    export {API_KEY_ENV_VARS[0]}="{key}"')
         print(_c("\n  On Windows PowerShell:", "dim"))
         print(f'    $env:{API_KEY_ENV_VARS[0]}="{key}"')
@@ -2372,7 +2446,7 @@ def cmd_auth(args: argparse.Namespace) -> int:
             print(f"    api key       : set ({env_name})")
             print(f"    fingerprint   : ...{key[-6:]}")
         else:
-            print(_c(f"    api key       : not set", "amber"))
+            print(_c("    api key       : not set", "amber"))
             print(_c(f"      set {env_name}, or run: carla auth generate-key", "dim"))
         if not loop and not key:
             print(_c(
@@ -2565,6 +2639,14 @@ def build_parser() -> argparse.ArgumentParser:
     rgsh.add_argument("what", help="tools | tiers | agents | adapters")
     sp.set_defaults(func=cmd_registry)
 
+    # export
+    sp = sub.add_parser("export", help="Export conversations or a training dataset")
+    sp.add_argument("--format", default="markdown", choices=["markdown", "json", "training"])
+    sp.add_argument("--session", default="", help="one session id (default: recent sessions)")
+    sp.add_argument("--limit", type=int, default=50)
+    sp.add_argument("-o", "--output", default="", help="write to a file instead of printing")
+    sp.set_defaults(func=cmd_export)
+
     # model
     sp = sub.add_parser(
         "model",
@@ -2588,6 +2670,21 @@ def build_parser() -> argparse.ArgumentParser:
                              help="Suggest models for this machine")
     mdlr.add_argument("--limit", type=int, default=5)
     mdlsub.add_parser("local", help="Models already on this machine")
+    mdlc = mdlsub.add_parser("custom", help="Download a model that is not in the catalog")
+    mdlc.add_argument("ref", help="Ollama tag, or Hugging Face repo owner/name")
+    mdlc.add_argument("--engine", default="ollama", help="ollama | llamacpp | native_onnx")
+    mdlc.add_argument("--file", default="", help="file inside the repo (.gguf / .onnx)")
+    mdlsub.add_parser("free", help="Unload all models and free memory")
+    mdlv = mdlsub.add_parser("device", help="Show or set the native engine device")
+    mdlv.add_argument("device", nargs="?", default="", help="cpu | gpu | auto")
+    mdlm = mdlsub.add_parser("remote", help="Use a model served by another PC")
+    mdlm.add_argument("host")
+    mdlm.add_argument("model")
+    mdlm.add_argument("--tier", default="deep_tier")
+    mdlm.add_argument("--kind", default="ollama", help="ollama | openai")
+    mdlm.add_argument("--port", type=int, default=0)
+    mdla = mdlsub.add_parser("auto", help="Pick, download and activate the best native model")
+    mdla.add_argument("--tier", default="fast_tier")
     mdld = mdlsub.add_parser("remove", help="Delete a downloaded model")
     mdld.add_argument("model_id")
     mdld.add_argument("--engine", default="llamacpp")

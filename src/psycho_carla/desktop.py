@@ -33,7 +33,7 @@ import urllib.request
 import webbrowser
 from typing import Any
 
-from .gui.launcher import hud_url, server_is_up, wait_for_server
+from .gui.launcher import hud_url, server_is_up
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8787

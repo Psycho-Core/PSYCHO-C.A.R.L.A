@@ -18,7 +18,6 @@ Layer: Pillar 3 / Persona.
 from __future__ import annotations
 
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -27,7 +26,7 @@ import threading
 import wave
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 def ensure_espeak_library() -> bool:

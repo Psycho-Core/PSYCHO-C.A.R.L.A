@@ -13,9 +13,9 @@ from __future__ import annotations
 import copy
 import os
 import threading
-from dataclasses import dataclass, field, fields, is_dataclass
+from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import Any, Dict, Iterable
+from typing import Any, Dict
 
 try:  # Python 3.11+
     import tomllib

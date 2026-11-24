@@ -14,7 +14,6 @@ import os
 import shutil
 import subprocess
 import sys
-from typing import Any
 
 from ..registry import ToolRegistry, get_registry
 

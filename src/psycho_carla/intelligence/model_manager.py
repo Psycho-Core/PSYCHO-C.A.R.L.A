@@ -25,9 +25,9 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterator
+from typing import Callable
 
-from ..utils.paths import carla_home, models_dir
+from ..utils.paths import models_dir
 from .model_catalog import NATIVE_MODELS
 
 #: Callback signature for progress: (message, percent_or_None).
@@ -895,3 +895,147 @@ def activate_native_model(model_id: str, tier: str = "fast_tier") -> dict:
         ),
     }
 
+
+
+# ---------------------------------------------------------------------------
+# Custom models — anything you can name, not just the catalog
+# ---------------------------------------------------------------------------
+
+import re as _re
+
+_HF_REPO = _re.compile(r"^[A-Za-z0-9][\w.-]*/[\w.-]+$")
+_OLLAMA_TAG = _re.compile(r"^[A-Za-z0-9][\w.\-:/]*$")
+
+
+def pull_custom(
+    engine: str,
+    ref: str,
+    filename: str = "",
+    progress: ProgressFn | None = None,
+) -> DownloadResult:
+    """Download a model that is not in the catalog.
+
+    ``engine`` / ``ref``:
+
+    * ``ollama`` — an Ollama tag (``name:tag`` or ``hf.co/owner/repo:quant``).
+    * ``llamacpp`` — a Hugging Face repo (``owner/repo``) and, optionally,
+      the ``.gguf`` file inside it.
+    * ``native_onnx`` — a Hugging Face repo with an ONNX export and,
+      optionally, the graph file (``onnx/model_q4.onnx``).
+
+    Nothing is run or imported from the download; it is only fetched.
+    """
+    progress = progress or _default_progress
+    engine = (engine or "ollama").strip().lower()
+    ref = (ref or "").strip()
+    filename = (filename or "").strip()
+    if not ref:
+        return DownloadResult(False, ref, engine, message="enter a model name first")
+    if ".." in filename or filename.startswith(("/", "\\")):
+        return DownloadResult(False, ref, engine, message="invalid file name")
+
+    if engine == "ollama":
+        if not _OLLAMA_TAG.match(ref):
+            return DownloadResult(False, ref, engine, message=f"'{ref}' is not a valid Ollama tag")
+        return ollama_pull(ref, progress=progress)
+
+    if not _HF_REPO.match(ref):
+        return DownloadResult(
+            False, ref, engine,
+            message=f"'{ref}' is not a Hugging Face repo — expected owner/name",
+        )
+    if engine in ("llamacpp", "llama_cpp"):
+        return hf_download(ref, filename or None, progress=progress)
+    if engine in ("native_onnx", "native", "onnx"):
+        model_id = "native:custom-" + ref.replace("/", "--").lower()
+        return hf_download_onnx(ref, filename or None, progress=progress, model_id=model_id)
+    return DownloadResult(
+        False, ref, engine,
+        message=f"custom downloads are not supported for '{engine}'",
+    )
+
+
+def set_native_device(device: str) -> dict:
+    """Persist the native engine's device (``cpu`` / ``gpu`` / ``auto``)."""
+    device = (device or "").strip().lower()
+    if device not in ("cpu", "gpu", "auto"):
+        return {"ok": False, "error": "device must be cpu, gpu or auto"}
+    from ..core.config import load_config, save_config
+
+    config = load_config()
+    config.engine.adapters.setdefault("native_onnx", {})["device"] = device
+    save_config(config)
+    # Models loaded under the old setting must reload.
+    from .model_lifecycle import lifecycle
+
+    lifecycle.free_memory()
+    return {"ok": True, "device": device,
+            "message": f"native engine device set to '{device}' — models reload on next use"}
+
+
+# ---------------------------------------------------------------------------
+# Auto-pick and remote machines
+# ---------------------------------------------------------------------------
+
+def best_native_model(free_ram_gb: float | None = None):
+    """The largest catalog native model that fits the free RAM, or ``None``.
+
+    Uses the same ~2.6x peak-memory rule as the rest of the manager, with
+    headroom for the OS.
+    """
+    from .model_catalog import NATIVE_MODELS
+
+    if free_ram_gb is None:
+        free_ram_gb = _free_memory_gb()
+    fitting = [m for m in NATIVE_MODELS if m.ram_gb <= max(free_ram_gb - 1.0, 0)]
+    if not fitting:
+        return None
+    return max(fitting, key=lambda m: m.parameter_count_b)
+
+
+def add_remote_tier(
+    host: str, model: str, tier: str = "deep_tier", kind: str = "ollama",
+    port: int = 0, check: bool = True,
+) -> dict:
+    """Point a tier at a model served by another machine on your network.
+
+    ``kind`` is ``ollama`` (default port 11434) or ``openai`` (any
+    OpenAI-compatible server — LM Studio, llama.cpp server, vLLM; default
+    port 1234). With ``check`` the server is contacted first, so a typo
+    shows up here rather than as a failed chat later.
+    """
+    host = (host or "").strip().removeprefix("http://").removeprefix("https://").rstrip("/")
+    if not _re.match(r"^[A-Za-z0-9.\-]+$", host):
+        return {"ok": False, "error": f"'{host}' is not a valid host name or address"}
+    if not model.strip():
+        return {"ok": False, "error": "a model name is required"}
+    kind = (kind or "ollama").lower()
+    if kind not in ("ollama", "openai"):
+        return {"ok": False, "error": "kind must be 'ollama' or 'openai'"}
+    port = port or (11434 if kind == "ollama" else 1234)
+    base = f"http://{host}:{port}" + ("" if kind == "ollama" else "/v1")
+
+    if check:
+        try:
+            import httpx
+
+            url = f"http://{host}:{port}/api/tags" if kind == "ollama" else base + "/models"
+            httpx.get(url, timeout=4.0).raise_for_status()
+        except Exception as exc:
+            return {"ok": False, "error": f"could not reach {base}: {exc}"}
+
+    from ..core.config import TierConfig, load_config, save_config
+
+    config = load_config()
+    existing = config.intelligence.tiers.get(tier)
+    config.intelligence.tiers[tier] = TierConfig(
+        provider="ollama" if kind == "ollama" else "openai_compat",
+        model=model.strip(),
+        base_url=base,
+        temperature=existing.temperature if existing else 0.7,
+        max_tokens=existing.max_tokens if existing else 1024,
+        description=f"{model.strip()} on {host}",
+    )
+    save_config(config)
+    return {"ok": True, "tier": tier, "base_url": base, "model": model.strip(),
+            "message": f"'{tier}' now uses {model.strip()} on {host}"}

@@ -137,10 +137,12 @@ class ModelLifecycle:
 
             try:
                 from psycho_carla.providers.adapters.native_onnx import (
-                    NativeOnnxAdapter,
+                    shared_adapter,
                 )
 
-                adapter = NativeOnnxAdapter({"model_path": path})
+                # The same object the router chats through, so Stop and
+                # Free memory really release the model chat is using.
+                adapter = shared_adapter({"model_path": path})
                 adapter._load()
             except Exception as exc:
                 logger.exception("Could not start %s", model_id)
@@ -198,6 +200,7 @@ class ModelLifecycle:
 
     def _stop_locked(self) -> None:
         adapter = self._adapter
+        model_id = self._adapter_model_id
         self._adapter = None
         self._adapter_model_id = ""
         if adapter is None:
@@ -206,7 +209,7 @@ class ModelLifecycle:
             adapter.unload()
         except Exception:
             logger.exception("Error while unloading the model")
-        state = self._states.get(self._adapter_model_id)
+        state = self._states.get(model_id)
         if state:
             state.running = False
 
@@ -219,10 +222,75 @@ class ModelLifecycle:
                 "running": True,
                 "model_id": self._adapter_model_id,
                 "engine": "native_onnx",
+                "device": getattr(self._adapter, "active_device", ""),
                 "loaded_at": self._states[
                     self._adapter_model_id
                 ].loaded_at if self._adapter_model_id in self._states else 0.0,
             }
+
+    def free_memory(self) -> dict[str, Any]:
+        """Release every model this process holds, and ask Ollama to do the same.
+
+        Unloads the native engine, tells a running Ollama to evict its
+        loaded models (``keep_alive: 0``), and collects garbage. Reports
+        how much RAM came back so the button can say something useful.
+        """
+        import gc
+
+        def _avail() -> float:
+            try:
+                import psutil
+
+                return psutil.virtual_memory().available / 1e9
+            except Exception:
+                return 0.0
+
+        before = _avail()
+        released: list[str] = []
+        with self._lock:
+            if self._adapter is not None:
+                released.append(self._adapter_model_id)
+                self._stop_locked()
+        try:
+            from psycho_carla.providers.adapters.native_onnx import unload_all
+
+            unload_all()
+        except Exception:
+            logger.exception("Error while unloading native models")
+        released += self._evict_ollama()
+        gc.collect()
+        after = _avail()
+        return {
+            "ok": True,
+            "released": released,
+            "freed_gb": round(max(after - before, 0.0), 2),
+            "free_gb": round(after, 2),
+            "message": (
+                f"released {', '.join(released)}" if released
+                else "no model was loaded"
+            ),
+        }
+
+    @staticmethod
+    def _evict_ollama() -> list[str]:
+        """Ask a running Ollama to unload its models. Quiet if it is not running."""
+        try:
+            import httpx
+
+            from psycho_carla.intelligence.model_manager import ollama_host
+
+            host = ollama_host()
+            ps = httpx.get(f"{host}/api/ps", timeout=2.0).json()
+            names = [m.get("name", "") for m in ps.get("models", []) if m.get("name")]
+            for name in names:
+                httpx.post(
+                    f"{host}/api/generate",
+                    json={"model": name, "keep_alive": 0},
+                    timeout=10.0,
+                )
+            return [f"ollama:{n}" for n in names]
+        except Exception:
+            return []
 
     @property
     def adapter(self) -> Any:

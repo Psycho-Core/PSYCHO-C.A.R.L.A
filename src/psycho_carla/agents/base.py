@@ -13,15 +13,14 @@ Layer: Pillar 3 (Agents).
 
 from __future__ import annotations
 
-import json
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable, Sequence
+from typing import Any, Sequence
 
 from ..core.config import CarlaConfig
 from ..core.persona import ChannelPayload, Persona
 from ..memory.store import MemoryStore
-from ..providers.base import GenerationResult, Message, ToolCall
+from ..providers.base import Message
 from ..providers.router import ModelRouter
 from ..tools.registry import ToolRegistry
 

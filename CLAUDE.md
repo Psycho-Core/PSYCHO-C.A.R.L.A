@@ -15,13 +15,13 @@ Key facts, all verified 2026-11-13 (today):
 - Original code. OpenJarvis (Stanford) was used only as a *feature/settings
   checklist* during development — there are **zero `import openjarvis`**
   references and no OpenJarvis code in the tree. Parity results live in
-  `docs/PARITY-AUDIT-7.md`.
+  `docs/audits/PARITY-AUDIT-7.md`.
 - Renamed from “Psycho-F.R.I.D.A.Y.” to PSYCHO-C.A.R.L.A. on 2026-11-13
   (package, classes, CLI, config, HUD, packaging). See
-  `docs/NAME-CHANGE-AUDIT.md`. The only “Friday” left in the source is the
+  `docs/audits/NAME-CHANGE-AUDIT.md`. The only “Friday” left in the source is the
   weekday in one example doc — that is correct English, leave it.
 - Status: **feature/settings parity with upstream is complete.**
-  403 pytest tests pass; end-to-end smoke is 46/46. See `docs/USER-NAME-AUDIT.md`
+  423 pytest tests pass (422 + 1 skip); end-to-end smoke is 46/46. See `docs/audits/USER-NAME-AUDIT.md`
   for the most recent feature audit.
 - Not yet done (owner-side): the Windows `.exe` has never been built in this
   Linux sandbox — `PsychoCARLA.spec` + `install.ps1` are ready and must be
@@ -53,13 +53,14 @@ Key facts, all verified 2026-11-13 (today):
 | `src/psycho_carla/connectors/` | 28 knowledge connectors + `KnowledgeStore` |
 | `src/psycho_carla/server/` | FastAPI app; HUD API (`server/api/hud.py`, `/api/*`), upstream-compatible `/v1/*` (`server/api/upstream.py`), templates/static in `server/web/` |
 | `src/psycho_carla/voice/` | CPU voice: Kokoro/Piper TTS, faster-whisper STT, openWakeWord |
-| `src/psycho_carla/cli/main.py` | 44-command CLI (`carla …`) |
+| `src/psycho_carla/cli/main.py` | 44-command CLI (`carla …`) incl. `model custom/free/device/remote/auto` and `export` |
+| `src/psycho_carla/core/exports.py` | conversation + training-JSONL export |
 | `src/psycho_carla/desktop.py` | pywebview desktop shell (`carla-app`) |
 | `src/psycho_carla/skills/` | 20 bundled skills, executor, sources |
 | `src/psycho_carla/bench/` | eval suites/scorers; CLI `eval --suite/--compare` |
 | `src/psycho_carla/security/`, `sandbox/`, `memory/`, `learning/`, `workflow/`, `a2a/`, `daemon/`, `mining/`, `analytics/` | supporting subsystems, all implemented |
-| `tests/` | pytest suite (403) + `tests/e2e_smoke.py` (46 checks) |
-| `docs/` | parity audits 4–7, `NAME-CHANGE-AUDIT.md`, `USER-NAME-AUDIT.md` |
+| `tests/` | pytest suite (423) + `tests/e2e_smoke.py` (46 checks) |
+| `docs/` | `MODELS.md`, `FEATURES.md`, `ARCHITECTURE.md`, `REFERENCE.md` (long README); history in `docs/audits/` |
 | `PsychoCARLA.spec`, `install.ps1` | Windows packaging (PyInstaller onedir; installer) |
 | `voice_samples/`, `examples/`, `tools/` | samples, example workflows/skills, HUD exporter + sample generators |
 
@@ -73,7 +74,7 @@ pip install -e .                       # Python ≥3.10 (3.11 recommended)
 carla init                             # writes psycho_carla.toml
 carla doctor                           # environment check — expect “Ready”
 carla serve                            # HUD + API on http://127.0.0.1:8787
-python -m pytest tests/ -q             # 403 tests, expect exit 0
+python -m pytest tests/ -q             # 423 tests, expect exit 0
 ```
 
 End-to-end smoke (needs a configured channel or the bridge is disabled):
@@ -98,6 +99,16 @@ pip install -e ".[packaging]"
 pyinstaller PsychoCARLA.spec           # → dist/PsychoCARLA/PsychoCARLA.exe
 .\install.ps1 -Voice                   # or the scripted install path
 ```
+
+## Model plumbing to know
+
+- The router and the Model Manager share **one** native engine per
+  (model path, device) via `native_onnx.shared_adapter()`; Stop / Free memory
+  unload that same object. Don't construct `NativeOnnxAdapter` directly for chat.
+- Device (`cpu`/`gpu`/`auto`) comes from `PSYCHO_CARLA_NATIVE_DEVICE` or
+  `[engine.adapters.native_onnx] device`. DirectML is unverified on real hardware.
+- Tests that need tiers require `carla init` (or a config) first; the native-engine
+  tests need `onnxruntime`.
 
 ## Traps previous sessions hit (don’t repeat)
 
@@ -135,8 +146,8 @@ pyinstaller PsychoCARLA.spec           # → dist/PsychoCARLA/PsychoCARLA.exe
 
 ## Working agreements
 
-- There is **no git repository** in this workspace — don’t rely on git
-  commands, diffs, or history unless the owner initialises one.
+- This is a git repository (GitHub: Psycho-Core/PSYCHO-C.A.R.L.A, default
+  branch `Master`). Work on a branch and open a PR.
 - Dev tooling (`ruff`, `mypy`, `pytest`) is behind the `dev` extra:
   `pip install -e ".[dev]"`. It is not installed in the Linux sandbox by
   default; `pytest` alone is the reliable gate there.

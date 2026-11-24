@@ -8,10 +8,9 @@ Part of the built-in channel set. See
 from __future__ import annotations
 
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .base import BaseChannel, ChannelMessage, ChannelStatus
-from .httpclient import ChannelError, build_url, request_json, truncate
 from .registry import register_channel
 
 

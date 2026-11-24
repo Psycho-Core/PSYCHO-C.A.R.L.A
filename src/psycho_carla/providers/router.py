@@ -15,7 +15,6 @@ import logging
 import os
 import sys
 import threading
-import time
 from dataclasses import dataclass
 from typing import Any, Iterator, Sequence
 
@@ -29,7 +28,6 @@ from .base import (
     ModelAdapter,
     StreamChunk,
     build_adapter,
-    available_adapters,
 )
 
 
@@ -96,7 +94,14 @@ class ModelRouter:
         with self._lock:
             ad = self._adapters.get(key)
             if ad is None:
-                ad = build_adapter(provider, self._adapter_options(provider, tier))
+                options = self._adapter_options(provider, tier)
+                if provider == "native_onnx":
+                    # Share the engine with the Model Manager's Start/Stop.
+                    from .adapters.native_onnx import shared_adapter
+
+                    ad = shared_adapter(options)
+                else:
+                    ad = build_adapter(provider, options)
                 self._adapters[key] = ad
             return ad
 

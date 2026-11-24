@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from .base import BaseConnector, SyncStatus
+from .base import BaseConnector
 
 _REGISTRY: dict[str, BaseConnector] = {}
 _FACTORIES: dict[str, Callable[..., BaseConnector]] = {}

@@ -12,11 +12,9 @@ Layer: Pillar 4 (Tools & Memory).
 from __future__ import annotations
 
 import json
-import os
 import re
 import sqlite3
 import subprocess
-import sys
 import tempfile
 import zlib
 from html.parser import HTMLParser

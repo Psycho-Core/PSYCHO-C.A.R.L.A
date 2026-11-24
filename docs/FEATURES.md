@@ -4,9 +4,9 @@
 
 This document separates what **has been built** (Part A) from what **has
 not been built yet** (Part B), so nobody has to guess. Part A reflects the
-verified state on 2026-11-13: 403 pytest tests pass and the end-to-end
-smoke suite is 46/46 (see `docs/PARITY-AUDIT-7.md`,
-`docs/NAME-CHANGE-AUDIT.md`, `docs/USER-NAME-AUDIT.md`).
+verified state on 2026-11-13: 423 pytest tests pass and the end-to-end
+smoke suite is 46/46 (see `docs/audits/PARITY-AUDIT-7.md`,
+`docs/audits/NAME-CHANGE-AUDIT.md`, `docs/audits/USER-NAME-AUDIT.md`).
 
 ---
 
@@ -27,6 +27,12 @@ smoke suite is 46/46 (see `docs/PARITY-AUDIT-7.md`,
   first-class metrics), and an efficiency summary in HUD, CLI, and API.
 
 ## A2. Intelligence & models
+- Model Manager (HUD + CLI): download / start / stop / delete, **custom model**
+  (any Ollama tag or Hugging Face repo), **free memory**, **auto-pick** by free
+  RAM, **remote PC** tiers, native-engine **device switch (CPU / DirectML GPU)**.
+  See `docs/MODELS.md`. (GPU path unit-tested for selection only.)
+- Conversation export (markdown / JSON) and a fine-tuning dataset export (JSONL).
+- First-run setup banner in the HUD when no model is usable.
 - 78-model catalog with per-model metadata; `carla model` commands to
   list, inspect, recommend, pull, and remove.
 - **Native in-process ONNX engine** — downloads, prunes, starts, stops, and

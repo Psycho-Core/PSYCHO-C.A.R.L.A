@@ -17,15 +17,16 @@ running, via the built-in offline fallback.
 ## Where it stands (verified 2026-11-13)
 
 - ✅ Code complete — nothing half-built
-- ✅ **403 automated tests pass**, **46/46 end-to-end checks pass**
+- ✅ **423 automated tests pass**, **46/46 end-to-end checks pass**
 - ✅ Rename to PSYCHO-C.A.R.L.A. fully applied and audited
-  (`docs/NAME-CHANGE-AUDIT.md`)
-- ✅ “What she calls you” setting audited (`docs/USER-NAME-AUDIT.md`)
+  (`docs/audits/NAME-CHANGE-AUDIT.md`)
+- ✅ “What she calls you” setting audited (`docs/audits/USER-NAME-AUDIT.md`)
+- ✅ Model Manager: custom models, DirectML GPU switch, free memory, auto-pick, remote PC (see `docs/MODELS.md`) — GPU path untested on real hardware
 - ⏳ **Windows `.exe` not built yet** — that step can only run on your
   Windows 11 machine (see below)
 - 💬 Discussed, not built: your own trainable model (fine-tuning add-on)
 
-Full history: `docs/PARITY-AUDIT-7.md` (feature/settings parity),
+Full history: `docs/audits/PARITY-AUDIT-7.md` (feature/settings parity),
 `CLAUDE.md` (technical handover for any AI/developer taking over).
 
 ## Run it (Windows 11)
@@ -80,7 +81,7 @@ user_name = ""       # what she calls you — blank means "Psycho"
 1. Read this file, then `CLAUDE.md`.
 2. `pip install -e .` → `carla doctor` → `carla serve`.
 3. Run `python -m pytest tests/ -q` to confirm everything is still green
-   (expect 403 passing).
+   (expect 423 passing).
 4. Any AI assistant can take over from `CLAUDE.md` — it has the full map,
    the traps, and your settled preferences (your name, the locked product
    name, original-code-only).

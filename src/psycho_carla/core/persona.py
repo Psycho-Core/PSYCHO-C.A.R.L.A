@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Iterable
+from typing import Any
 
 from .config import PersonaConfig
 
@@ -337,7 +337,6 @@ class Persona:
 # --------------------------------------------------------------------------- #
 # Small randomness helpers (kept local so persona stays dependency-free)
 # --------------------------------------------------------------------------- #
-import random  # noqa: E402  (deliberately late import)
 
 _lead_index = 0
 

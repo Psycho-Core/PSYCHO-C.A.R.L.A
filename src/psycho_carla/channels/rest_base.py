@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Optional
 
-from .base import BaseChannel, ChannelMessage, ChannelStatus
+from .base import BaseChannel, ChannelStatus
 from .httpclient import ChannelError, build_url, request_json, truncate
 
 #: Generic ceiling for platforms using this base.

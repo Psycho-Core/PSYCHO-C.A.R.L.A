@@ -10,11 +10,9 @@ These cover the paths that are easy to get wrong and hard to notice:
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
-import pytest
 
 
 # ----------------------------------------------------------------------

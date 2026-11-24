@@ -13,7 +13,6 @@ managed by the C.A.R.L.A. daemon supervisor.
 
 from __future__ import annotations
 
-from typing import Any, Dict
 
 from .irc import IRCChannel
 from .line import LineChannel

@@ -30,7 +30,7 @@ from email.header import decode_header
 from pathlib import Path
 from typing import Any, Iterable
 
-from .base import Attachment, Document, SyncStatus
+from .base import Document, SyncStatus
 from .oauth import (
     CONNECTORS_DIR,
     build_auth_url,

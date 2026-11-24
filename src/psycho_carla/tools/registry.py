@@ -15,7 +15,7 @@ import json
 import time
 import traceback
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable, Optional, Sequence
+from typing import Any, Callable, Iterable, Sequence
 
 
 @dataclass

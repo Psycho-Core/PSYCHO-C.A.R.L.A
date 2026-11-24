@@ -363,11 +363,11 @@ changes.
 
 ## Testing strategy
 
-- **Unit tests** (`tests/test_core.py`) — 61 tests. Each primitive in
-  isolation, plus the persona splitter, cron parser, memory store, sandbox and
-  HTTP surface. No model required.
-- **Integration** (`tests/e2e_smoke.py`) — 32 live checks against a running
-  instance with a mock model: tool-calling loop, dual-channel routing, semantic
+- **Unit/integration tests** (`tests/`, 423 tests) — each primitive in
+  isolation, plus the persona splitter, cron parser, memory store, sandbox,
+  HTTP surface, model manager and exports. No model required.
+- **Integration** (`tests/e2e_smoke.py`) — 46 live checks against a running
+  instance (offline fallback responder): tool-calling loop, dual-channel routing, semantic
   memory, telemetry, cron, tier switching, the OpenAI API, and WebSocket
   delivery.
 

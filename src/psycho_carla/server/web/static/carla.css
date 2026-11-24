@@ -135,9 +135,12 @@ body::after {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-rows: var(--carla-header-h) 1fr;
+  grid-template-rows: var(--carla-header-h) auto minmax(0, 1fr);
   height: 100vh;
 }
+.app > .header { grid-row: 1; }
+.app > .setup-banner { grid-row: 2; }
+.app > .main { grid-row: 3; }
 
 /* --- Header ------------------------------------------------------------ */
 .header {
@@ -1033,3 +1036,45 @@ label.field > span {
   .column { overflow: visible; }
   .header-stats { display: none; }
 }
+
+
+/* ==========================================================================
+   Declutter pass: collapsible panels, compact orb, header actions, banner
+   ========================================================================== */
+.header-actions { display: flex; gap: 8px; align-items: center; }
+.panel-head { cursor: pointer; user-select: none; }
+.panel-head .panel-title::after {
+  content: '▾'; margin-left: 8px; color: var(--carla-text-faint); font-size: 11px;
+  transition: transform var(--carla-speed-fast) var(--carla-ease);
+}
+.panel.collapsed .panel-head .panel-title::after { transform: rotate(-90deg); }
+.panel.collapsed .panel-body,
+.panel.collapsed .panel-foot { display: none; }
+.panel.collapsed { flex: 0 0 auto !important; min-height: 0 !important; }
+.panel-head button { cursor: pointer; }
+
+/* The orb is decoration — keep it, but let the console have the room. */
+.voice-core { padding: 10px 0 8px; }
+.core-wrap { width: 132px; height: 132px; }
+.core-wrap .core-ring, .core-wrap .core-ticks, .core-wrap .core-wave { transform: scale(0.57); }
+.core-state { font-size: 12px; }
+
+/* Long lists scroll instead of pushing everything down. */
+#agentList { max-height: 300px; overflow-y: auto; }
+.agent-filter { margin-bottom: 8px; }
+
+.setup-banner {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin: 10px var(--carla-gap) 0; padding: 10px 14px;
+  border: 1px solid var(--carla-amber); border-radius: var(--carla-radius-sm);
+  background: rgba(255, 179, 0, 0.08); font-size: 13px;
+}
+.setup-banner[hidden] { display: none; }
+.setup-text { flex: 1 1 320px; }
+.setup-text b { color: var(--carla-amber); margin-right: 6px; }
+.setup-actions { display: flex; gap: 8px; }
+
+.mm-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 12px; margin: 0 0 14px; }
+.mm-card { border: 1px solid var(--carla-border); border-radius: var(--carla-radius-sm); padding: 10px 12px; }
+.mm-card p { margin: 4px 0 8px; }
+.mm-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }

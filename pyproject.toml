@@ -67,6 +67,15 @@ native = [
   "jinja2>=3.1",          # required by transformers' chat templates
   "numpy>=1.24",
 ]
+# --- GPU for the native engine (DirectML: AMD/NVIDIA/Intel on Windows) -----
+# Replaces the plain onnxruntime wheel: pip uninstall onnxruntime first.
+native-gpu = [
+  "onnxruntime-directml>=1.17",
+  "transformers>=4.40",
+  "huggingface_hub>=0.23",
+  "jinja2>=3.1",
+  "numpy>=1.24",
+]
 # --- Semantic embeddings (optional; hash embedder is built in) --------------
 embeddings = [
   "sentence-transformers>=2.6",

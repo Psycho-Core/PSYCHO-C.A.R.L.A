@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..registry import ToolRegistry, get_registry
+from ..registry import ToolRegistry
 
 
 def install_runtime_tools(registry: ToolRegistry, runtime: Any) -> ToolRegistry:

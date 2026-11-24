@@ -7,7 +7,6 @@ Part of the built-in channel set. See
 
 from __future__ import annotations
 
-import json
 
 from typing import Any, Dict, List, Optional
 

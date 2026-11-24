@@ -27,7 +27,7 @@ Layer: Pillar 2 (Engine).
 
 from __future__ import annotations
 
-import json
+import gc
 import logging
 import os
 import threading
@@ -40,7 +40,6 @@ from ..base import (
     Message,
     ModelAdapter,
     StreamChunk,
-    ToolCall,
     Usage,
     register_adapter,
 )
@@ -113,6 +112,33 @@ def _onnxruntime_available() -> tuple[bool, str]:
     return True, "ok"
 
 
+#: Execution providers, in the order each device setting prefers them.
+#: ``DmlExecutionProvider`` is DirectML (any DirectX 12 GPU on Windows —
+#: including AMD Radeon cards). It ships in ``onnxruntime-directml``,
+#: which replaces the plain ``onnxruntime`` wheel.
+GPU_PROVIDERS = ("DmlExecutionProvider",)
+
+
+def select_providers(device: str, available: Sequence[str]) -> tuple[list[str], str]:
+    """Choose ONNX Runtime execution providers for a device setting.
+
+    ``device`` is ``cpu`` (default, the verified path), ``gpu`` (use a
+    GPU provider if one is installed) or ``auto`` (same as ``gpu`` —
+    fall back to the CPU quietly). Returns ``(providers, note)``; the
+    CPU provider is always last so unsupported operators still run.
+    """
+    device = (device or "cpu").strip().lower()
+    if device not in ("cpu", "gpu", "auto"):
+        device = "cpu"
+    if device == "cpu":
+        return ["CPUExecutionProvider"], "cpu"
+    gpu = [p for p in GPU_PROVIDERS if p in available]
+    if gpu:
+        return gpu + ["CPUExecutionProvider"], "gpu:" + gpu[0]
+    note = "cpu (no GPU provider installed — pip install onnxruntime-directml)"
+    return ["CPUExecutionProvider"], note
+
+
 @register_adapter
 class NativeOnnxAdapter(ModelAdapter):
     """Runs an ONNX model in-process on the CPU.
@@ -125,6 +151,8 @@ class NativeOnnxAdapter(ModelAdapter):
         Path to the tokenizer files. Defaults to the model's directory.
     threads:
         CPU threads to use. Defaults to a sensible slice of the cores.
+    device:
+        ``cpu`` (default), ``gpu`` or ``auto`` — see :func:`select_providers`.
     """
 
     name = "native_onnx"
@@ -142,6 +170,11 @@ class NativeOnnxAdapter(ModelAdapter):
             self.options.get("tokenizer_path", "") or self.extra.get("tokenizer_path", "")
         )
         self.threads = int(self.options.get("threads", 0) or self.extra.get("threads", 0))
+        self.device = str(
+            self.options.get("device", "") or self.extra.get("device", "")
+            or os.environ.get("PSYCHO_CARLA_NATIVE_DEVICE", "") or "cpu"
+        )
+        self.active_device: str = ""
         self._session: Any = None
         self._tokenizer: Any = None
         self._kv_inputs: list[Any] = []
@@ -266,9 +299,25 @@ class NativeOnnxAdapter(ModelAdapter):
         # small machine. We pick the level that fits the RAM we have.
         so.graph_optimization_level = _optimization_level()
 
-        self._session = ort.InferenceSession(
-            str(graph), so, providers=["CPUExecutionProvider"]
+        providers, note = select_providers(
+            self.device, ort.get_available_providers()
         )
+        if providers[0] != "CPUExecutionProvider":
+            # DirectML requires sequential execution and no memory pattern.
+            so.enable_mem_pattern = False
+            so.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+        try:
+            self._session = ort.InferenceSession(str(graph), so, providers=providers)
+            self.active_device = note
+        except Exception as exc:
+            if providers[0] == "CPUExecutionProvider":
+                raise
+            logger.warning("GPU session failed (%s) — falling back to the CPU", exc)
+            so.enable_mem_pattern = True
+            self._session = ort.InferenceSession(
+                str(graph), so, providers=["CPUExecutionProvider"]
+            )
+            self.active_device = f"cpu (GPU failed: {exc})"
         self._tokenizer = AutoTokenizer.from_pretrained(str(tokenizer_dir))
         self._kv_inputs = [
             i for i in self._session.get_inputs()
@@ -289,6 +338,12 @@ class NativeOnnxAdapter(ModelAdapter):
             self._kv_inputs = []
             self._input_names = set()
             self._loaded_model = ""
+            self.active_device = ""
+        gc.collect()
+
+    @property
+    def loaded(self) -> bool:
+        return self._session is not None
 
     # ------------------------------------------------------------------
     # Generation
@@ -724,4 +779,77 @@ class NativeOnnxAdapter(ModelAdapter):
         return True, f"ready: {graph.name}"
 
 
-__all__ = ["NativeOnnxAdapter"]
+def configured_device() -> str:
+    """The device setting: env var, else ``[engine.adapters.native_onnx] device``."""
+    env = os.environ.get("PSYCHO_CARLA_NATIVE_DEVICE", "").strip()
+    if env:
+        return env
+    try:
+        from ...core.config import load_config
+
+        cfg = load_config().engine.adapters.get("native_onnx", {}) or {}
+        return str(cfg.get("device", "") or "cpu")
+    except Exception:
+        return "cpu"
+
+
+def gpu_status() -> dict[str, Any]:
+    """What GPU support this install has — for the Model Manager."""
+    try:
+        import onnxruntime as ort
+
+        avail = list(ort.get_available_providers())
+    except ImportError:
+        return {"onnxruntime": False, "providers": [], "gpu_available": False,
+                "device": configured_device()}
+    return {
+        "onnxruntime": True,
+        "providers": avail,
+        "gpu_available": any(p in avail for p in GPU_PROVIDERS),
+        "device": configured_device(),
+    }
+
+
+# ---------------------------------------------------------------------------
+# One shared engine per model
+# ---------------------------------------------------------------------------
+# The Model Manager (Start/Stop/Free memory) and the router (chat) must
+# drive the *same* loaded model; two copies would double the RAM use and
+# make Stop a no-op for the copy chat actually uses.
+
+_SHARED: dict[tuple[str, str], NativeOnnxAdapter] = {}
+_SHARED_LOCK = threading.Lock()
+
+
+def shared_adapter(options: dict[str, Any]) -> NativeOnnxAdapter:
+    """The process-wide adapter for this model path and device."""
+    options = dict(options)
+    path = str(options.get("model_path", "") or (options.get("extra") or {}).get("model_path", ""))
+    device = str(options.get("device", "") or configured_device())
+    options["device"] = device
+    with _SHARED_LOCK:
+        key = (path, device)
+        ad = _SHARED.get(key)
+        if ad is None:
+            ad = NativeOnnxAdapter(options)
+            _SHARED[key] = ad
+        return ad
+
+
+def unload_all() -> int:
+    """Unload every shared native model. Returns how many were loaded."""
+    with _SHARED_LOCK:
+        adapters = list(_SHARED.values())
+    count = 0
+    for ad in adapters:
+        try:
+            if getattr(ad, "loaded", True):
+                count += 1
+            ad.unload()
+        except Exception:
+            logger.exception("Error while unloading a native model")
+    return count
+
+
+__all__ = ["NativeOnnxAdapter", "select_providers", "shared_adapter", "unload_all",
+    "configured_device", "gpu_status"]

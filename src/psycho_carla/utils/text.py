@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import Iterable, Iterator
 
 
 def estimate_tokens(text: str) -> int:

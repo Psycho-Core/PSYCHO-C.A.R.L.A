@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import sqlite3
 import subprocess
 import sys
-import tempfile
 import zlib
 from pathlib import Path
 

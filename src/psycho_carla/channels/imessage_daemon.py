@@ -17,16 +17,13 @@ Part of the built-in channel set. See
 from __future__ import annotations
 
 import logging
-import os
 import sqlite3
 import subprocess
 import threading
-import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .base import BaseChannel, ChannelMessage, ChannelStatus
-from .httpclient import ChannelError, build_url, request_json, truncate
 from .registry import register_channel
 
 logger = logging.getLogger(__name__)

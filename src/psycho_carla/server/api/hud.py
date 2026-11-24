@@ -10,16 +10,12 @@ Layer: Pillar 2 (Engine).
 
 from __future__ import annotations
 
-import json
-import os
-import time
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import PlainTextResponse
 
-from ...core.config import dump_toml, load_config, save_config
 from ...core.telemetry import hardware_summary
 from ...learning.optimizer import PromptOptimizer
 
@@ -46,6 +42,29 @@ async def status(request: Request):
 async def health(request: Request):
     runtime = _runtime(request)
     return {"ok": True, "started": runtime._started}
+
+
+@router.get("/setup")
+async def setup_state(request: Request):
+    """Is a model usable? Drives the first-run banner in the HUD."""
+    from ...intelligence.model_manager import _free_memory_gb, best_native_model
+
+    runtime = _runtime(request)
+    router_ = runtime.router
+    res = router_.resolve(None)
+    try:
+        ok, detail = res.adapter.health()
+    except Exception as exc:
+        ok, detail = False, str(exc)
+    pick = best_native_model()
+    return {
+        "needs_setup": not ok,
+        "reason": "" if ok else detail,
+        "provider": res.provider,
+        "model": res.model,
+        "free_ram_gb": round(_free_memory_gb(), 1),
+        "native_pick": pick.model_id if pick else "",
+    }
 
 
 @router.get("/hardware")
@@ -715,6 +734,100 @@ async def models_stop(request: Request, body: dict[str, Any]):
 
     model_id = str(body.get("model_id", "")).strip()
     return lifecycle.stop(model_id)
+
+
+@router.post("/models/custom")
+async def models_custom(request: Request, body: dict[str, Any]):
+    """Download a model that is not in the catalog (HF repo or Ollama tag)."""
+    from ...intelligence.model_manager import pull_custom
+
+    result = pull_custom(
+        str(body.get("engine", "ollama")),
+        str(body.get("ref", "")),
+        str(body.get("filename", "")),
+    )
+    return result.to_dict()
+
+
+@router.post("/models/free")
+async def models_free(request: Request):
+    """Free memory: unload every loaded model (native and Ollama)."""
+    from ...intelligence.model_lifecycle import lifecycle
+
+    return lifecycle.free_memory()
+
+
+@router.get("/models/device")
+async def models_device_get(request: Request):
+    """GPU support for the native engine, and the current device setting."""
+    from ...providers.adapters.native_onnx import gpu_status
+
+    return gpu_status()
+
+
+@router.post("/models/device")
+async def models_device_set(request: Request, body: dict[str, Any]):
+    """Set the native engine's device: cpu, gpu (DirectML) or auto."""
+    from ...intelligence.model_manager import set_native_device
+
+    result = set_native_device(str(body.get("device", "")))
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("error", "bad device"))
+    return result
+
+
+@router.post("/models/auto")
+async def models_auto(request: Request):
+    """Pick the best native model for this machine, download and start it."""
+    from ...intelligence.model_lifecycle import lifecycle
+    from ...intelligence.model_manager import (
+        activate_native_model, best_native_model, pull_model,
+    )
+
+    spec = best_native_model()
+    if spec is None:
+        raise HTTPException(status_code=400, detail="not enough free RAM for any native model")
+    pulled = pull_model(spec.model_id, "native_onnx")
+    if not pulled.ok:
+        raise HTTPException(status_code=400, detail=pulled.message)
+    activate_native_model(spec.model_id, "fast_tier")
+    started = lifecycle.start(spec.model_id)
+    return {"ok": bool(started.get("ok")), "model_id": spec.model_id,
+            "message": started.get("message", "")}
+
+
+@router.post("/models/remote")
+async def models_remote(request: Request, body: dict[str, Any]):
+    """Use a model served by another PC (Ollama or an OpenAI-compatible server)."""
+    from ...intelligence.model_manager import add_remote_tier
+
+    result = add_remote_tier(
+        str(body.get("host", "")), str(body.get("model", "")),
+        tier=str(body.get("tier", "deep_tier")) or "deep_tier",
+        kind=str(body.get("kind", "ollama")), port=int(body.get("port") or 0),
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("error", "failed"))
+    return result
+
+
+@router.get("/export")
+async def export_conversations(
+    request: Request, format: str = "markdown", session_id: str = "", limit: int = 50,
+):
+    """Download conversations as markdown/json, or format=training for JSONL."""
+
+    from ...core.exports import export_sessions, export_training_jsonl
+
+    runtime = _runtime(request)
+    if format == "training":
+        text, kind = export_training_jsonl(runtime.memory, limit=limit), "application/x-ndjson"
+    elif format in ("markdown", "json"):
+        text = export_sessions(runtime.memory, format, session_id, limit)
+        kind = "application/json" if format == "json" else "text/markdown"
+    else:
+        raise HTTPException(status_code=400, detail="format must be markdown, json or training")
+    return PlainTextResponse(text, media_type=kind)
 
 
 @router.get("/models/status")

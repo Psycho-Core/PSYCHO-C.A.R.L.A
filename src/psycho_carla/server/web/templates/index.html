@@ -61,8 +61,26 @@
       </div>
     </div>
 
-    <button class="btn ghost sm" id="btnSettings" title="Edit psycho_carla.toml">⚙ Config</button>
+    <div class="header-actions">
+      <button class="btn sm" id="btnHdrModels" title="Download, start and stop models">Models</button>
+      <button class="btn sm" id="btnFreeMem" title="Unload every model and free the memory">Free memory</button>
+      <button class="btn ghost sm" id="btnExport" title="Download your conversations">Export</button>
+      <button class="btn ghost sm" id="btnSettings" title="Edit psycho_carla.toml">⚙ Config</button>
+    </div>
   </header>
+
+  <!-- ====================== SETUP BANNER ====================== -->
+  <div class="setup-banner" id="setupBanner" hidden>
+    <div class="setup-text">
+      <b>No model is running yet.</b>
+      <span id="setupReason">C.A.R.L.A. is answering with its built-in fallback.</span>
+    </div>
+    <div class="setup-actions">
+      <button class="btn sm primary" id="btnSetupAuto" title="Download and start the best model that fits this PC's free RAM">Auto-pick a model</button>
+      <button class="btn sm" id="btnSetupModels">Choose a model</button>
+      <button class="btn sm ghost" id="btnSetupDismiss">Dismiss</button>
+    </div>
+  </div>
 
   <!-- ====================== MAIN ====================== -->
   <div class="main">
@@ -77,7 +95,7 @@
         <div class="panel-body" id="agentList"></div>
       </section>
 
-      <section class="panel" style="flex: 0 0 auto;">
+      <section class="panel" data-collapsed="1" style="flex: 0 0 auto;">
         <div class="panel-head">
           <span class="panel-title">Capability Tiers</span>
           <span class="panel-badge" id="tierBadge">—</span>
@@ -85,7 +103,7 @@
         <div class="panel-body" id="tierList"></div>
       </section>
 
-      <section class="panel" style="flex: 1 1 auto; min-height: 140px;">
+      <section class="panel" data-collapsed="1" style="flex: 1 1 auto; min-height: 140px;">
         <div class="panel-head">
           <span class="panel-title">Tool Matrix</span>
           <span class="panel-badge" id="toolCount">0</span>
@@ -238,7 +256,7 @@
         </div>
       </section>
 
-      <section class="panel" style="flex: 0 0 auto;">
+      <section class="panel" data-collapsed="1" style="flex: 0 0 auto;">
         <div class="panel-head">
           <span class="panel-title">Cron Scheduler</span>
           <span class="panel-badge" id="jobBadge">0</span>
@@ -258,7 +276,7 @@
         </div>
       </section>
 
-      <section class="panel" style="flex: 0 0 auto;">
+      <section class="panel" data-collapsed="1" style="flex: 0 0 auto;">
         <div class="panel-head">
           <span class="panel-title">Skills Catalog</span>
           <span class="panel-badge" id="skillBadge">0</span>
@@ -268,7 +286,7 @@
         </div>
       </section>
 
-      <section class="panel" style="flex: 0 0 auto;">
+      <section class="panel" data-collapsed="1" style="flex: 0 0 auto;">
         <div class="panel-head">
           <span class="panel-title">Learning Surfaces</span>
           <span class="panel-badge" id="learnBadge">—</span>
@@ -278,7 +296,7 @@
         </div>
       </section>
 
-      <section class="panel" style="flex: 0 0 auto;">
+      <section class="panel" data-collapsed="1" style="flex: 0 0 auto;">
         <div class="panel-head">
           <span class="panel-title">Channels</span>
           <span class="panel-badge" id="chanBadge">—</span>
@@ -314,6 +332,12 @@
       <option value="vllm">vllm</option>
       <option value="sglang">sglang</option>
     </select>
+    <select id="mmDevice" title="Where the native engine runs models" style="width:auto;">
+      <option value="cpu">device: CPU</option>
+      <option value="gpu">device: GPU (DirectML)</option>
+      <option value="auto">device: auto</option>
+    </select>
+    <button class="btn sm" id="mmFree" title="Unload every model and free the memory">Free memory</button>
     <button class="btn sm" id="mmRefresh">↻ Refresh</button>
     <button class="btn sm ghost" id="mmClose">✕</button>
   </div>
@@ -324,6 +348,28 @@
     </p>
     <div style="margin-bottom:10px;">
       <span class="editor-path" id="mmStatus"></span>
+    </div>
+    <div class="mm-tools">
+      <div class="mm-card">
+        <div class="panel-title">Custom model</div>
+        <p class="editor-path">Any Ollama tag, or a Hugging Face repo (<code>owner/name</code>) for the selected engine.</p>
+        <div class="mm-row">
+          <input type="text" id="mmCustomRef" placeholder="qwen3:4b  or  owner/name" style="flex:2 1 220px;">
+          <input type="text" id="mmCustomFile" placeholder="file (optional): model_q4.onnx / .gguf" style="flex:2 1 220px;">
+          <button class="btn sm primary" id="mmCustomGo">Download</button>
+        </div>
+      </div>
+      <div class="mm-card">
+        <div class="panel-title">Use another PC</div>
+        <p class="editor-path">Run the heavy model on a stronger machine on your network.</p>
+        <div class="mm-row">
+          <input type="text" id="mmRemHost" placeholder="192.168.1.50" style="flex:1 1 130px;">
+          <input type="text" id="mmRemModel" placeholder="model name" style="flex:1 1 130px;">
+          <select id="mmRemKind" style="width:auto;"><option value="ollama">Ollama</option><option value="openai">OpenAI-compatible</option></select>
+          <select id="mmRemTier" style="width:auto;"><option value="deep_tier">deep_tier</option><option value="fast_tier">fast_tier</option></select>
+          <button class="btn sm primary" id="mmRemGo">Connect</button>
+        </div>
+      </div>
     </div>
     <div id="mmCatalog"></div>
     <div class="panel-title" style="margin:16px 0 8px;">Installed on this machine</div>

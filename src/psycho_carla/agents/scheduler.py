@@ -16,13 +16,12 @@ Layer: Pillar 3 (Agents).
 
 from __future__ import annotations
 
-import re
 import threading
 import time
 import traceback
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 # --------------------------------------------------------------------------- #
 # Cron expression parsing

@@ -13,16 +13,14 @@ Layer: Core.
 
 from __future__ import annotations
 
-import json
 import threading
 import time
-import uuid
-from typing import Any, Callable, Iterable, Sequence
+from typing import Any, Callable, Sequence
 
-from ..agents.base import AgentResult, BaseAgent
+from ..agents.base import BaseAgent
 from ..agents.builtin import BUILTIN_AGENTS
 from ..agents.registry import AgentRegistry
-from ..agents.scheduler import ContinuousLoop, CronSchedule, ScheduledJob, Scheduler
+from ..agents.scheduler import ContinuousLoop, ScheduledJob, Scheduler
 from ..core.config import CarlaConfig, load_config, set_active_config
 from ..core.persona import Persona
 from ..core.telemetry import Telemetry, hardware_summary

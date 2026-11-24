@@ -12,7 +12,6 @@ resolves to the same session key when their channel ids are linked.
 
 from __future__ import annotations
 
-import json
 import os
 import signal
 import subprocess

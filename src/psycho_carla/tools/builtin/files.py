@@ -9,11 +9,9 @@ Layer: Pillar 4 (Tools & Memory).
 
 from __future__ import annotations
 
-import os
 import re
 import shutil
 from pathlib import Path
-from typing import Any
 
 from ..registry import ToolRegistry, get_registry
 

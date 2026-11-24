@@ -1,0 +1,31 @@
+[recipe]
+name = "coding-benchmark"
+description = "SWE-style coding benchmark configuration"
+version = "0.1.0"
+kind = "discrete"
+
+[intelligence]
+model = ""
+provider = ""
+
+[engine]
+key = ""
+
+[agent]
+type = "orchestrator"
+max_turns = 30
+temperature = 0.1
+tools = ["file_read", "file_write", "file_search", "shell_exec", "code_execute"]
+system_prompt = """
+You work on software engineering issues. Find the root cause, make a minimal
+patch, and run the relevant tests. Report what you changed and what the
+tests said.
+"""
+
+[learning]
+routing = "heuristic"
+agent = "none"
+
+[eval]
+suites = ["swe"]
+benchmarks = ["swebench"]

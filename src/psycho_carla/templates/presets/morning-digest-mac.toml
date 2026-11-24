@@ -1,0 +1,49 @@
+# PSYCHO-C.A.R.L.A. — preset: morning-digest-mac
+#
+# A daily briefing built for macOS: the HUD on one screen, a morning digest
+# cron at 07:30, and voice output on by default.
+#
+#   carla init --preset morning-digest-mac
+
+[preset]
+name = "morning-digest-mac"
+description = "Daily morning briefing tuned for macOS"
+
+[server]
+host = "127.0.0.1"
+port = 8787
+require_auth = false
+
+[memory]
+enabled = true
+recall_limit = 8
+
+[telemetry]
+enabled = true
+gpu_metrics = true
+energy_vendor = "auto"
+
+[voice]
+enabled = true
+tts_engine = "piper"
+tts_voice = "en_GB-alba-medium"
+stt_engine = "faster-whisper"
+stt_model = "base"
+wake_word = "hey_carla"
+barge_in = true
+
+[agents]
+default = "orchestrator"
+
+[agents.digest]
+type = "scheduler"
+max_turns = 6
+temperature = 0.4
+tools = ["memory_search", "web_search"]
+
+
+[[cron]]
+name = "morning-digest"
+schedule = "30 7 * * *"
+agent = "digest"
+prompt = "Brief me: overnight messages, today's calendar, anything overdue."

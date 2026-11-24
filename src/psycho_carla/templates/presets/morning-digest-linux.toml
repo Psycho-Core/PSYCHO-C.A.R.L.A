@@ -1,0 +1,49 @@
+# PSYCHO-C.A.R.L.A. — preset: morning-digest-linux
+#
+# The same daily briefing, tuned for Linux: a systemd user service for the
+# console, energy telemetry on, and the HUD bound to loopback.
+#
+#   carla init --preset morning-digest-linux
+
+[preset]
+name = "morning-digest-linux"
+description = "Daily morning briefing tuned for Linux, with systemd service"
+
+[server]
+host = "127.0.0.1"
+port = 8787
+require_auth = false
+
+[memory]
+enabled = true
+recall_limit = 8
+
+[telemetry]
+enabled = true
+gpu_metrics = true
+energy_vendor = "auto"
+
+[voice]
+enabled = true
+tts_engine = "piper"
+tts_voice = "en_GB-alan-medium"
+stt_engine = "faster-whisper"
+stt_model = "base"
+wake_word = "hey_carla"
+barge_in = true
+
+[agents]
+default = "orchestrator"
+
+[agents.digest]
+type = "scheduler"
+max_turns = 6
+temperature = 0.4
+tools = ["memory_search", "web_search"]
+
+
+[[cron]]
+name = "morning-digest"
+schedule = "30 7 * * *"
+agent = "digest"
+prompt = "Brief me: overnight messages, today's calendar, anything overdue."

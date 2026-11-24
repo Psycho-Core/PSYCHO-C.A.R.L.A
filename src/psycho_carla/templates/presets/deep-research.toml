@@ -1,0 +1,71 @@
+# PSYCHO-C.A.R.L.A. — preset: deep-research
+#
+# A multi-agent research setup: a planner, parallel researchers, a
+# fact-checker and a writer, plus the bench/eval harness switched on.
+#
+#   carla init --preset deep-research
+
+[preset]
+name = "deep-research"
+description = "Multi-agent research pipeline with planning and fact-checking"
+
+[server]
+host = "127.0.0.1"
+port = 8787
+require_auth = false
+
+[memory]
+enabled = true
+recall_limit = 12
+
+[telemetry]
+enabled = true
+gpu_metrics = true
+energy_vendor = "auto"
+
+[voice]
+enabled = false
+
+[learning]
+enabled = true
+policy = "heuristic"
+
+[bench]
+enabled = true
+
+[agents]
+default = "orchestrator"
+
+[agents.planner]
+type = "planner"
+max_turns = 12
+temperature = 0.3
+tools = ["web_search", "memory_search"]
+
+[agents.researcher]
+type = "researcher"
+max_turns = 20
+temperature = 0.4
+tools = ["web_search", "file_read", "memory_search"]
+
+[agents.fact_checker]
+type = "critic"
+max_turns = 10
+temperature = 0.1
+tools = ["web_search"]
+
+[agents.writer]
+type = "writer"
+max_turns = 14
+temperature = 0.6
+tools = ["file_write"]
+
+[agents.deep_research]
+type = "orchestrator"
+max_turns = 30
+temperature = 0.3
+tools = ["web_search", "memory_search", "file_read", "file_write"]
+system_prompt_extra = """
+Break research questions into sub-questions, run them in parallel, verify
+every factual claim against a source, and only then write the answer.
+"""

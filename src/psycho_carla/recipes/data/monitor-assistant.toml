@@ -1,0 +1,36 @@
+[recipe]
+name = "monitor-assistant"
+description = "Long-horizon monitoring that reports only on change"
+version = "0.1.0"
+kind = "operator"
+
+[intelligence]
+model = ""
+provider = ""
+
+[engine]
+key = ""
+
+[agent]
+type = "scheduler"
+max_turns = 25
+temperature = 0.3
+tools = ["shell_exec", "code_execute", "memory_store", "memory_search", "web_fetch"]
+system_prompt = """
+You are a monitor. Poll, log, and notice what changed. Report only what is
+actually different from the last run, and stay silent when nothing changed.
+"""
+
+[learning]
+routing = "heuristic"
+agent = "none"
+
+[schedule]
+type = "cron"
+value = "*/15 * * * *"
+
+[channels]
+enabled = ["hud", "cli"]
+
+[security]
+required_capabilities = ["shell_exec"]

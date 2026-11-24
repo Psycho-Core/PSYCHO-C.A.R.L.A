@@ -1,0 +1,16 @@
+# Bundled skill: meeting-notes (ported from upstream)
+
+[[steps]]
+tool = "file_read"
+arguments = '{"path": "{transcript_path}"}'
+output = "transcript"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Extract key information from the transcript: attendees, topics discussed, decisions made, action items, deadlines, and open questions: {transcript}"}'
+output = "extracted_info"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Format as structured meeting notes with sections: Date, Attendees, Agenda, Discussion Summary, Decisions, Action Items (with owners and deadlines), Next Steps: {extracted_info}"}'
+output = "meeting_notes"

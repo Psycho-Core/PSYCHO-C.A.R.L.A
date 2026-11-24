@@ -1,0 +1,443 @@
+[
+  {
+    "file": "kokoro_bf_emma_gb_female__greeting.wav",
+    "label": "kokoro_bf_emma_gb_female",
+    "engine": "kokoro",
+    "voice": "bf_emma",
+    "line": "greeting",
+    "text": "C.A.R.L.A. online and at your service, Boss.",
+    "duration": 3.5
+  },
+  {
+    "file": "kokoro_bf_emma_gb_female__ack.wav",
+    "label": "kokoro_bf_emma_gb_female",
+    "engine": "kokoro",
+    "voice": "bf_emma",
+    "line": "ack",
+    "text": "On it, Boss.",
+    "duration": 1.73
+  },
+  {
+    "file": "kokoro_bf_emma_gb_female__done.wav",
+    "label": "kokoro_bf_emma_gb_female",
+    "engine": "kokoro",
+    "voice": "bf_emma",
+    "line": "done",
+    "text": "Done, Boss. The answer is 42.",
+    "duration": 2.85
+  },
+  {
+    "file": "kokoro_bf_emma_gb_female__failure.wav",
+    "label": "kokoro_bf_emma_gb_female",
+    "engine": "kokoro",
+    "voice": "bf_emma",
+    "line": "failure",
+    "text": "Apologies, Boss. That didn't go to plan.",
+    "duration": 3.08
+  },
+  {
+    "file": "kokoro_bf_emma_gb_female__informative.wav",
+    "label": "kokoro_bf_emma_gb_female",
+    "engine": "kokoro",
+    "voice": "bf_emma",
+    "line": "informative",
+    "text": "Right, Boss. The answer is 42.",
+    "duration": 2.88
+  },
+  {
+    "file": "kokoro_bf_emma_gb_female__dry_wit.wav",
+    "label": "kokoro_bf_emma_gb_female",
+    "engine": "kokoro",
+    "voice": "bf_emma",
+    "line": "dry_wit",
+    "text": "Sir, the diagnostics are clean. That's almost suspicious.",
+    "duration": 4.08
+  },
+  {
+    "file": "kokoro_bf_emma_gb_female__terse.wav",
+    "label": "kokoro_bf_emma_gb_female",
+    "engine": "kokoro",
+    "voice": "bf_emma",
+    "line": "terse",
+    "text": "Patch applied. No regressions.",
+    "duration": 2.7
+  },
+  {
+    "file": "kokoro_bm_george_gb_male__greeting.wav",
+    "label": "kokoro_bm_george_gb_male",
+    "engine": "kokoro",
+    "voice": "bm_george",
+    "line": "greeting",
+    "text": "C.A.R.L.A. online and at your service, Boss.",
+    "duration": 4.03
+  },
+  {
+    "file": "kokoro_bm_george_gb_male__ack.wav",
+    "label": "kokoro_bm_george_gb_male",
+    "engine": "kokoro",
+    "voice": "bm_george",
+    "line": "ack",
+    "text": "On it, Boss.",
+    "duration": 1.7
+  },
+  {
+    "file": "kokoro_bm_george_gb_male__done.wav",
+    "label": "kokoro_bm_george_gb_male",
+    "engine": "kokoro",
+    "voice": "bm_george",
+    "line": "done",
+    "text": "Done, Boss. The answer is 42.",
+    "duration": 3.17
+  },
+  {
+    "file": "kokoro_bm_george_gb_male__failure.wav",
+    "label": "kokoro_bm_george_gb_male",
+    "engine": "kokoro",
+    "voice": "bm_george",
+    "line": "failure",
+    "text": "Apologies, Boss. That didn't go to plan.",
+    "duration": 3.35
+  },
+  {
+    "file": "kokoro_bm_george_gb_male__informative.wav",
+    "label": "kokoro_bm_george_gb_male",
+    "engine": "kokoro",
+    "voice": "bm_george",
+    "line": "informative",
+    "text": "Right, Boss. The answer is 42.",
+    "duration": 3.15
+  },
+  {
+    "file": "kokoro_bm_george_gb_male__dry_wit.wav",
+    "label": "kokoro_bm_george_gb_male",
+    "engine": "kokoro",
+    "voice": "bm_george",
+    "line": "dry_wit",
+    "text": "Sir, the diagnostics are clean. That's almost suspicious.",
+    "duration": 4.4
+  },
+  {
+    "file": "kokoro_bm_george_gb_male__terse.wav",
+    "label": "kokoro_bm_george_gb_male",
+    "engine": "kokoro",
+    "voice": "bm_george",
+    "line": "terse",
+    "text": "Patch applied. No regressions.",
+    "duration": 2.95
+  },
+  {
+    "file": "kokoro_am_michael_us_male__greeting.wav",
+    "label": "kokoro_am_michael_us_male",
+    "engine": "kokoro",
+    "voice": "am_michael",
+    "line": "greeting",
+    "text": "C.A.R.L.A. online and at your service, Boss.",
+    "duration": 3.65
+  },
+  {
+    "file": "kokoro_am_michael_us_male__ack.wav",
+    "label": "kokoro_am_michael_us_male",
+    "engine": "kokoro",
+    "voice": "am_michael",
+    "line": "ack",
+    "text": "On it, Boss.",
+    "duration": 1.73
+  },
+  {
+    "file": "kokoro_am_michael_us_male__done.wav",
+    "label": "kokoro_am_michael_us_male",
+    "engine": "kokoro",
+    "voice": "am_michael",
+    "line": "done",
+    "text": "Done, Boss. The answer is 42.",
+    "duration": 3.3
+  },
+  {
+    "file": "kokoro_am_michael_us_male__failure.wav",
+    "label": "kokoro_am_michael_us_male",
+    "engine": "kokoro",
+    "voice": "am_michael",
+    "line": "failure",
+    "text": "Apologies, Boss. That didn't go to plan.",
+    "duration": 3.48
+  },
+  {
+    "file": "kokoro_am_michael_us_male__informative.wav",
+    "label": "kokoro_am_michael_us_male",
+    "engine": "kokoro",
+    "voice": "am_michael",
+    "line": "informative",
+    "text": "Right, Boss. The answer is 42.",
+    "duration": 3.2
+  },
+  {
+    "file": "kokoro_am_michael_us_male__dry_wit.wav",
+    "label": "kokoro_am_michael_us_male",
+    "engine": "kokoro",
+    "voice": "am_michael",
+    "line": "dry_wit",
+    "text": "Sir, the diagnostics are clean. That's almost suspicious.",
+    "duration": 4.45
+  },
+  {
+    "file": "kokoro_am_michael_us_male__terse.wav",
+    "label": "kokoro_am_michael_us_male",
+    "engine": "kokoro",
+    "voice": "am_michael",
+    "line": "terse",
+    "text": "Patch applied. No regressions.",
+    "duration": 2.83
+  },
+  {
+    "file": "piper_alba_gb_female__greeting.wav",
+    "label": "piper_alba_gb_female",
+    "engine": "piper",
+    "voice": "en_GB-alba-medium",
+    "line": "greeting",
+    "text": "C.A.R.L.A. online and at your service, Boss.",
+    "duration": 3.89
+  },
+  {
+    "file": "piper_alba_gb_female__ack.wav",
+    "label": "piper_alba_gb_female",
+    "engine": "piper",
+    "voice": "en_GB-alba-medium",
+    "line": "ack",
+    "text": "On it, Boss.",
+    "duration": 1.56
+  },
+  {
+    "file": "piper_alba_gb_female__done.wav",
+    "label": "piper_alba_gb_female",
+    "engine": "piper",
+    "voice": "en_GB-alba-medium",
+    "line": "done",
+    "text": "Done, Boss. The answer is 42.",
+    "duration": 3.38
+  },
+  {
+    "file": "piper_alba_gb_female__failure.wav",
+    "label": "piper_alba_gb_female",
+    "engine": "piper",
+    "voice": "en_GB-alba-medium",
+    "line": "failure",
+    "text": "Apologies, Boss. That didn't go to plan.",
+    "duration": 3.49
+  },
+  {
+    "file": "piper_alba_gb_female__informative.wav",
+    "label": "piper_alba_gb_female",
+    "engine": "piper",
+    "voice": "en_GB-alba-medium",
+    "line": "informative",
+    "text": "Right, Boss. The answer is 42.",
+    "duration": 3.34
+  },
+  {
+    "file": "piper_alba_gb_female__dry_wit.wav",
+    "label": "piper_alba_gb_female",
+    "engine": "piper",
+    "voice": "en_GB-alba-medium",
+    "line": "dry_wit",
+    "text": "Sir, the diagnostics are clean. That's almost suspicious.",
+    "duration": 4.71
+  },
+  {
+    "file": "piper_alba_gb_female__terse.wav",
+    "label": "piper_alba_gb_female",
+    "engine": "piper",
+    "voice": "en_GB-alba-medium",
+    "line": "terse",
+    "text": "Patch applied. No regressions.",
+    "duration": 3.05
+  },
+  {
+    "file": "piper_cori_gb_female_high__greeting.wav",
+    "label": "piper_cori_gb_female_high",
+    "engine": "piper",
+    "voice": "en_GB-cori-high",
+    "line": "greeting",
+    "text": "C.A.R.L.A. online and at your service, Boss.",
+    "duration": 3.32
+  },
+  {
+    "file": "piper_cori_gb_female_high__ack.wav",
+    "label": "piper_cori_gb_female_high",
+    "engine": "piper",
+    "voice": "en_GB-cori-high",
+    "line": "ack",
+    "text": "On it, Boss.",
+    "duration": 1.58
+  },
+  {
+    "file": "piper_cori_gb_female_high__done.wav",
+    "label": "piper_cori_gb_female_high",
+    "engine": "piper",
+    "voice": "en_GB-cori-high",
+    "line": "done",
+    "text": "Done, Boss. The answer is 42.",
+    "duration": 2.57
+  },
+  {
+    "file": "piper_cori_gb_female_high__failure.wav",
+    "label": "piper_cori_gb_female_high",
+    "engine": "piper",
+    "voice": "en_GB-cori-high",
+    "line": "failure",
+    "text": "Apologies, Boss. That didn't go to plan.",
+    "duration": 3.07
+  },
+  {
+    "file": "piper_cori_gb_female_high__informative.wav",
+    "label": "piper_cori_gb_female_high",
+    "engine": "piper",
+    "voice": "en_GB-cori-high",
+    "line": "informative",
+    "text": "Right, Boss. The answer is 42.",
+    "duration": 2.9
+  },
+  {
+    "file": "piper_cori_gb_female_high__dry_wit.wav",
+    "label": "piper_cori_gb_female_high",
+    "engine": "piper",
+    "voice": "en_GB-cori-high",
+    "line": "dry_wit",
+    "text": "Sir, the diagnostics are clean. That's almost suspicious.",
+    "duration": 3.78
+  },
+  {
+    "file": "piper_cori_gb_female_high__terse.wav",
+    "label": "piper_cori_gb_female_high",
+    "engine": "piper",
+    "voice": "en_GB-cori-high",
+    "line": "terse",
+    "text": "Patch applied. No regressions.",
+    "duration": 2.3
+  },
+  {
+    "file": "piper_alan_gb_male__greeting.wav",
+    "label": "piper_alan_gb_male",
+    "engine": "piper",
+    "voice": "en_GB-alan-medium",
+    "line": "greeting",
+    "text": "C.A.R.L.A. online and at your service, Boss.",
+    "duration": 3.81
+  },
+  {
+    "file": "piper_alan_gb_male__ack.wav",
+    "label": "piper_alan_gb_male",
+    "engine": "piper",
+    "voice": "en_GB-alan-medium",
+    "line": "ack",
+    "text": "On it, Boss.",
+    "duration": 1.29
+  },
+  {
+    "file": "piper_alan_gb_male__done.wav",
+    "label": "piper_alan_gb_male",
+    "engine": "piper",
+    "voice": "en_GB-alan-medium",
+    "line": "done",
+    "text": "Done, Boss. The answer is 42.",
+    "duration": 3.17
+  },
+  {
+    "file": "piper_alan_gb_male__failure.wav",
+    "label": "piper_alan_gb_male",
+    "engine": "piper",
+    "voice": "en_GB-alan-medium",
+    "line": "failure",
+    "text": "Apologies, Boss. That didn't go to plan.",
+    "duration": 3.31
+  },
+  {
+    "file": "piper_alan_gb_male__informative.wav",
+    "label": "piper_alan_gb_male",
+    "engine": "piper",
+    "voice": "en_GB-alan-medium",
+    "line": "informative",
+    "text": "Right, Boss. The answer is 42.",
+    "duration": 3.32
+  },
+  {
+    "file": "piper_alan_gb_male__dry_wit.wav",
+    "label": "piper_alan_gb_male",
+    "engine": "piper",
+    "voice": "en_GB-alan-medium",
+    "line": "dry_wit",
+    "text": "Sir, the diagnostics are clean. That's almost suspicious.",
+    "duration": 4.38
+  },
+  {
+    "file": "piper_alan_gb_male__terse.wav",
+    "label": "piper_alan_gb_male",
+    "engine": "piper",
+    "voice": "en_GB-alan-medium",
+    "line": "terse",
+    "text": "Patch applied. No regressions.",
+    "duration": 2.82
+  },
+  {
+    "file": "kokoro_af_heart_us_female__greeting.wav",
+    "label": "kokoro_af_heart_us_female",
+    "engine": "kokoro",
+    "voice": "af_heart",
+    "line": "greeting",
+    "text": "C.A.R.L.A. online and at your service, Boss.",
+    "duration": 3.35
+  },
+  {
+    "file": "kokoro_af_heart_us_female__ack.wav",
+    "label": "kokoro_af_heart_us_female",
+    "engine": "kokoro",
+    "voice": "af_heart",
+    "line": "ack",
+    "text": "On it, Boss.",
+    "duration": 1.62
+  },
+  {
+    "file": "kokoro_af_heart_us_female__done.wav",
+    "label": "kokoro_af_heart_us_female",
+    "engine": "kokoro",
+    "voice": "af_heart",
+    "line": "done",
+    "text": "Done, Boss. The answer is 42.",
+    "duration": 2.8
+  },
+  {
+    "file": "kokoro_af_heart_us_female__failure.wav",
+    "label": "kokoro_af_heart_us_female",
+    "engine": "kokoro",
+    "voice": "af_heart",
+    "line": "failure",
+    "text": "Apologies, Boss. That didn't go to plan.",
+    "duration": 3.1
+  },
+  {
+    "file": "kokoro_af_heart_us_female__informative.wav",
+    "label": "kokoro_af_heart_us_female",
+    "engine": "kokoro",
+    "voice": "af_heart",
+    "line": "informative",
+    "text": "Right, Boss. The answer is 42.",
+    "duration": 2.73
+  },
+  {
+    "file": "kokoro_af_heart_us_female__dry_wit.wav",
+    "label": "kokoro_af_heart_us_female",
+    "engine": "kokoro",
+    "voice": "af_heart",
+    "line": "dry_wit",
+    "text": "Sir, the diagnostics are clean. That's almost suspicious.",
+    "duration": 3.9
+  },
+  {
+    "file": "kokoro_af_heart_us_female__terse.wav",
+    "label": "kokoro_af_heart_us_female",
+    "engine": "kokoro",
+    "voice": "af_heart",
+    "line": "terse",
+    "text": "Patch applied. No regressions.",
+    "duration": 2.58
+  }
+]

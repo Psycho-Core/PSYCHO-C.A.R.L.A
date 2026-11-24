@@ -1,0 +1,31 @@
+[recipe]
+name = "research-assistant"
+description = "Multi-hop research with citations and cross-checking"
+version = "0.1.0"
+kind = "discrete"
+
+[intelligence]
+model = ""
+provider = ""
+
+[engine]
+key = ""
+
+[agent]
+type = "orchestrator"
+max_turns = 18
+temperature = 0.4
+tools = ["web_search", "web_fetch", "memory_store", "memory_search"]
+system_prompt = """
+You are a thorough research assistant. Break the question into sub-questions,
+search for primary sources, cross-reference what you find, and synthesise an
+answer with citations. Separate established fact from opinion, and say
+plainly where the sources disagree.
+"""
+
+[learning]
+routing = "dspy"
+agent = "none"
+
+[eval]
+suites = ["research"]

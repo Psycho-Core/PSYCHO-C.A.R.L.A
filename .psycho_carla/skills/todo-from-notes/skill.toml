@@ -1,0 +1,16 @@
+# Bundled skill: todo-from-notes (ported from upstream)
+
+[[steps]]
+tool = "file_read"
+arguments = '{"path": "{notes_path}"}'
+output = "notes_content"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Identify all actionable items, tasks, commitments, and follow-ups from the notes. Tag each with priority (high/medium/low) and category: {notes_content}"}'
+output = "extracted_todos"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Format as a prioritized todo list with checkboxes, due dates where mentioned, and categories. Sort by priority: {extracted_todos}"}'
+output = "todo_list"

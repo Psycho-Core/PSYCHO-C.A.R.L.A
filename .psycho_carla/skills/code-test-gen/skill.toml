@@ -1,0 +1,21 @@
+# Bundled skill: code-test-gen (ported from upstream)
+
+[[steps]]
+tool = "file_read"
+arguments = '{"path": "{file_path}"}'
+output = "source_code"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Identify all functions, classes, and methods in the source code. Determine their inputs, outputs, and edge cases: {source_code}"}'
+output = "analysis"
+
+[[steps]]
+tool = "code_interpreter"
+arguments = '{"code": "# Generate pytest-style unit tests based on the analysis:\\n# {analysis}\\nprint(\"Tests generated successfully\")"}'
+output = "generated_tests"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Review the generated tests for completeness and correctness. Suggest additional test cases if needed: {generated_tests}"}'
+output = "review"

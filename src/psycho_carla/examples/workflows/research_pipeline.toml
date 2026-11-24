@@ -1,0 +1,25 @@
+# PSYCHO-C.A.R.L.A. — example workflow
+#
+# A two-stage research pipeline: research, then summarise.
+# Run it with:  carla workflow run examples/workflows/research_pipeline.toml
+
+[workflow]
+name = "research_pipeline"
+
+# --- stage 1: gather material ------------------------------------------------
+[[workflow.nodes]]
+id = "researcher"
+type = "agent"
+agent = "orchestrator"
+prompt = "Research the following and list the key facts:\n\n{input}"
+
+# --- stage 2: turn the notes into prose --------------------------------------
+[[workflow.nodes]]
+id = "summarizer"
+type = "agent"
+agent = "orchestrator"
+prompt = "Summarise these notes in three bullet points:\n\n{researcher}"
+
+[[workflow.edges]]
+source = "researcher"
+target = "summarizer"

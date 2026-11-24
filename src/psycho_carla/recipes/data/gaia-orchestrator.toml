@@ -1,0 +1,31 @@
+[recipe]
+name = "gaia-orchestrator"
+description = "General agent benchmark orchestrator configuration"
+version = "0.1.0"
+kind = "discrete"
+
+[intelligence]
+model = ""
+provider = ""
+
+[engine]
+key = ""
+
+[agent]
+type = "orchestrator"
+max_turns = 30
+temperature = 0.2
+tools = ["web_search", "web_fetch", "file_read", "file_write", "code_execute", "calculator"]
+system_prompt = """
+You are an orchestrator solving general agent benchmark tasks. Plan the task,
+use every tool that helps, verify your answer before you give it, and state
+the answer plainly at the end.
+"""
+
+[learning]
+routing = "heuristic"
+agent = "none"
+
+[eval]
+suites = ["gaia"]
+benchmarks = ["gaia"]

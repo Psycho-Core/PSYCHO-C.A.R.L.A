@@ -1,0 +1,16 @@
+# Bundled skill: pdf-summarize (ported from upstream)
+
+[[steps]]
+tool = "pdf_extract"
+arguments = '{"path": "{pdf_path}"}'
+output = "pdf_text"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Identify the document structure (title, sections, key arguments) from the extracted text: {pdf_text}"}'
+output = "structure"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Generate a comprehensive summary with sections: Overview, Key Points, Conclusions, and Action Items based on: {structure}"}'
+output = "summary"

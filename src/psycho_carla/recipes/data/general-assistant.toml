@@ -1,0 +1,26 @@
+[recipe]
+name = "general-assistant"
+description = "Balanced general-purpose assistant"
+version = "0.1.0"
+kind = "discrete"
+
+[intelligence]
+model = ""
+provider = ""
+
+[engine]
+key = ""
+
+[agent]
+type = "orchestrator"
+max_turns = 8
+temperature = 0.7
+tools = ["calculator", "web_search", "memory_search"]
+system_prompt = "You are a helpful general-purpose assistant. Answer questions clearly and use tools when they improve the answer."
+
+[learning]
+routing = "heuristic"
+agent = "none"
+
+[eval]
+suites = ["general"]

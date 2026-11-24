@@ -1,0 +1,21 @@
+# Bundled skill: compare-docs (ported from upstream)
+
+[[steps]]
+tool = "file_read"
+arguments = '{"path": "{file_a}"}'
+output = "doc_a"
+
+[[steps]]
+tool = "file_read"
+arguments = '{"path": "{file_b}"}'
+output = "doc_b"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Compare the two documents. Identify additions, removals, and modifications. Note structural differences and content changes. Document A: {doc_a}. Document B: {doc_b}"}'
+output = "differences"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Generate a comparison summary with sections: Overview, Key Differences, Added Content, Removed Content, Modified Sections, and Recommendation: {differences}"}'
+output = "comparison_report"

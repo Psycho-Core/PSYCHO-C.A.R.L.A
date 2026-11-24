@@ -1,0 +1,42 @@
+# PSYCHO-C.A.R.L.A. — preset: morning-digest-minimal
+#
+# The lightest daily briefing: no voice, no GPU telemetry, a single agent.
+# Runs comfortably on a laptop with a small local model.
+#
+#   carla init --preset morning-digest-minimal
+
+[preset]
+name = "morning-digest-minimal"
+description = "The lightest daily briefing — text only, single agent"
+
+[server]
+host = "127.0.0.1"
+port = 8787
+require_auth = false
+
+[memory]
+enabled = true
+recall_limit = 5
+
+[telemetry]
+enabled = false
+gpu_metrics = false
+
+[voice]
+enabled = false
+
+[agents]
+default = "orchestrator"
+
+[agents.digest]
+type = "scheduler"
+max_turns = 4
+temperature = 0.4
+tools = ["memory_search"]
+
+
+[[cron]]
+name = "morning-digest"
+schedule = "30 7 * * *"
+agent = "digest"
+prompt = "Brief me: overnight messages, today's calendar, anything overdue."

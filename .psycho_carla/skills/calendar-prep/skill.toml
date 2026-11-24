@@ -1,0 +1,16 @@
+# Bundled skill: calendar-prep (ported from upstream)
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Parse the event details and identify what preparation is needed. Event: {event_title}. Attendees: {attendees}. Agenda: {agenda}"}'
+output = "prep_needs"
+
+[[steps]]
+tool = "memory_search"
+arguments = '{"query": "{event_title} {attendees}"}'
+output = "related_context"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Create a briefing document with: event summary, attendee background, talking points, relevant history, and suggested preparation steps. Needs: {prep_needs}. Context: {related_context}"}'
+output = "briefing"

@@ -1,0 +1,31 @@
+[recipe]
+name = "terminalbench-react"
+description = "ReAct-style agent for terminal benchmark tasks"
+version = "0.1.0"
+kind = "discrete"
+
+[intelligence]
+model = ""
+provider = ""
+
+[engine]
+key = ""
+
+[agent]
+type = "orchestrator"
+max_turns = 40
+temperature = 0.1
+tools = ["shell_exec", "file_read", "file_write", "code_execute"]
+system_prompt = """
+You solve terminal tasks by acting and observing. Run one command, read the
+output, then decide the next step. Verify the task is actually done before
+you declare it finished.
+"""
+
+[learning]
+routing = "heuristic"
+agent = "none"
+
+[eval]
+suites = ["terminal"]
+benchmarks = ["terminalbench"]

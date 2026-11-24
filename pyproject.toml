@@ -1,0 +1,153 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "psycho-carla"
+version = "1.0.0"
+description = "PSYCHO-C.A.R.L.A. (Coding, Automated Reasoning, & Language Assistant) — Personal AI on Personal Devices. A model-agnostic local-first agent framework with a C.A.R.L.A. persona, CPU-only dual-channel voice, and a holographic command HUD."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "PSYCHO-C.A.R.L.A. Project" }]
+keywords = ["ai", "agents", "llm", "local-first", "mcp", "voice", "windows-11"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: Microsoft :: Windows 11",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# --- Core (always required) --------------------------------------------------
+dependencies = [
+  "httpx>=0.27",
+  "pydantic>=2.6",
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.29",
+  "websockets>=12.0",
+  "python-multipart>=0.0.9",
+  "numpy>=1.24",
+  "psutil>=5.9",
+  # AES-GCM for the encrypted vault. The vault stores MCP and channel
+  # secrets, so this is core rather than an extra — without it, a fresh
+  # install cannot save any credential.
+  "cryptography>=42.0",
+]
+
+[project.optional-dependencies]
+# --- CPU-only voice stack -----------------------------------------------------
+voice = [
+  # Kokoro TTS. These are pulled in explicitly because `kokoro`'s own
+  # dependency chain does not declare them, and it fails at import time
+  # without them (misaki -> num2words, misaki.espeak -> phonemizer).
+  "kokoro>=0.9.4",          # CPU TTS — 82M params, British/Irish-ish female voice (bf_emma)
+  "misaki>=0.9.4",          # Kokoro's G2P / phonemiser
+  "num2words>=0.5.13",      # required by misaki
+  "phonemizer>=3.2.1",      # espeak-ng bridge, used by misaki's fallback
+  "transformers>=4.40",     # required by kokoro's Albert text encoder
+  "torch>=2.2",             # CPU inference
+  "soundfile>=0.12",
+  "piper-tts>=1.2.0",       # alternative CPU TTS — much lighter on RAM
+  "faster-whisper>=1.0.3",  # CPU STT (CTranslate2, int8)
+  "sounddevice>=0.4.6",     # microphone capture
+  "openwakeword>=0.6.0",    # wake word detection
+  "onnxruntime>=1.17",      # openWakeWord runtime
+]
+# --- Native in-process CPU inference ----------------------------------------
+# Lets C.A.R.L.A. run a model inside its own process, with no Ollama,
+# no llama.cpp server and nothing else to install.
+native = [
+  "onnxruntime>=1.17",     # the CPU inference runtime
+  "transformers>=4.40",    # tokenizer + chat template
+  "huggingface_hub>=0.23", # model download
+  "jinja2>=3.1",          # required by transformers' chat templates
+  "numpy>=1.24",
+]
+# --- Semantic embeddings (optional; hash embedder is built in) --------------
+embeddings = [
+  "sentence-transformers>=2.6",
+]
+# --- Development / tests -----------------------------------------------------
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.23",
+  "ruff>=0.4",
+  "mypy>=1.9",
+]
+# --- Native desktop application ----------------------------------------------
+# A real application window (WebView2 on Windows 11) instead of a browser tab.
+# Falls back to the browser automatically if this is not installed.
+desktop = [
+  "pywebview>=4.4",
+]
+# --- Building a standalone Windows executable --------------------------------
+packaging = [
+  "pyinstaller>=6.6",
+]
+# --- Model downloads ---------------------------------------------------------
+# Used by `carla model pull --engine llamacpp` for resumable HuggingFace
+# downloads. Without it the manager falls back to a plain HTTPS fetch.
+models = [
+  "huggingface-hub>=0.23",
+]
+# --- Everything, CPU-only, no GPU required ----------------------------------
+full = [
+  "psycho-carla[voice,embeddings,desktop,models]",
+]
+
+[project.scripts]
+carla = "psycho_carla.cli.main:main"
+psycho-carla = "psycho_carla.cli.main:main"
+carla-app = "psycho_carla.desktop:main"
+
+[project.urls]
+Homepage = "https://github.com/psycho-carla/psycho-carla"
+Documentation = "https://github.com/psycho-carla/psycho-carla/tree/main/docs"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["psycho_carla*"]
+
+[tool.setuptools.package-data]
+psycho_carla = [
+  "server/web/templates/*.html",
+  "server/web/static/*.css",
+  "server/web/static/*.js",
+  "server/web/static/*.svg",
+  # Agent templates and configuration presets ship *inside* the package so
+  # they are available from an installed wheel, not just a source checkout.
+  "templates/data/*.toml",
+  "templates/presets/*.toml",
+  # Recipes are the composable primitive configurations.
+  "recipes/data/*.toml",
+  # Example workflows and a sample skill.
+  "examples/workflows/*.toml",
+  "examples/skills/*/SKILL.md",
+  "examples/skills/*/references/*.md",
+  "examples/skills/*/scripts/*.py",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q"
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_configs = true

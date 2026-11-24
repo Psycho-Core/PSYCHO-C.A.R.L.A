@@ -1,0 +1,179 @@
+# PSYCHO-C.A.R.L.A. configuration
+# Model-agnostic: point [tiers.*] at any local or cloud provider.
+
+[intelligence]
+default_tier = "fast_tier"
+fallback_tier = ""
+temperature = 0.7
+max_tokens = 2048
+top_p = 0.9
+top_k = 40
+repetition_penalty = 1.0
+stop_sequences = []
+context_window = 8192
+default_model = ""
+fallback_model = ""
+provider = ""
+quantization = ""
+
+[tiers.fast_tier]
+provider = "native_onnx"
+model = "native_smollm2-360m"
+base_url = ""
+api_key_env = ""
+temperature = 0.7
+max_tokens = 1024
+top_p = 0.9
+top_k = 40
+repetition_penalty = 1.0
+stop_sequences = []
+timeout = 300.0
+extra = {model_path = "/home/user/.psycho_carla/models/native/native_smollm2-360m"}
+description = "Runs inside C.A.R.L.A. on the CPU — native_smollm2-360m. No Ollama, no external server."
+
+[engine]
+default_adapter = "ollama"
+detect_hardware = true
+fallback_chain = []
+
+[agent]
+default_agent = "orchestrator"
+max_turns = 10
+tools = []
+objective = ""
+system_prompt = ""
+system_prompt_path = ""
+context_from_memory = true
+
+[tools.storage]
+default_backend = "sqlite"
+context_top_k = 5
+context_min_score = 0.05
+context_max_tokens = 2048
+chunk_size = 1024
+chunk_overlap = 128
+vector_dim = 384
+embedding_model = ""
+
+[tools.mcp]
+enabled = true
+request_timeout = 30.0
+client_info_name = "psycho-carla"
+
+[tools]
+enabled = []
+disabled = []
+
+[memory]
+enabled = true
+backend = "local"
+extraction_model = ""
+max_facts = 2000
+db_path = ""
+
+[learning]
+enabled = false
+update_interval = 50
+auto_update = false
+optimizer = "dspy"
+
+[telemetry]
+enabled = true
+track_latency = true
+track_tokens_per_second = true
+track_resources = true
+track_energy = true
+energy_vendor = "auto"
+gpu_metrics = true
+gpu_poll_interval_ms = 50
+warmup_samples = 0
+steady_state_window = 5
+steady_state_threshold = 0.05
+sample_interval = 1.0
+db_path = ""
+retain_days = 30
+
+[traces]
+enabled = true
+db_path = ""
+retain_days = 14
+
+[sessions]
+enabled = true
+db_path = ""
+max_age_hours = 24.0
+consolidation_threshold = 100
+max_message_tokens = 4000
+
+[channels]
+enabled = true
+max_length = 8000
+
+[cron]
+enabled = true
+jobs = []
+
+[skills]
+enabled = true
+dir = ""
+auto_load = true
+max_skills = 0
+validate_on_load = true
+
+[server]
+host = "127.0.0.1"
+port = 8787
+agent = "orchestrator"
+api_key_env = "PSYCHO_CARLA_API_KEY"
+api_key = ""
+require_auth = true
+a2a_enabled = true
+a2a_agent = ""
+a2a_token = ""
+model = ""
+workers = 1
+cors_origins = ["*"]
+openai_compat_prefix = "/v1"
+
+[voice]
+enabled = true
+tts_engine = "kokoro"
+tts_voice = "irish_female"
+tts_model = ""
+tts_model_path = ""
+tts_speed = 1.0
+tts_device = "cpu"
+stt_engine = "faster-whisper"
+stt_model = "base.en"
+stt_device = "cpu"
+stt_compute_type = "int8"
+wake_word = "hey carla"
+wake_word_enabled = true
+wake_word_engine = "openwakeword"
+barge_in = true
+channel_split = true
+speak_min_chars = 12
+voice_id = ""
+listen_timeout = 30.0
+
+[persona]
+name = "C.A.R.L.A."
+user_name = ""   # what C.A.R.L.A. calls you (blank = Psycho)
+style = "sharp, loyal, dry-witted"
+irish = true
+max_spoken_chars = 480
+speak_markdown_tables = false
+
+[web_search]
+provider = "duckduckgo"
+api_key_env = ""
+base_url = ""
+max_results = 5
+timeout = 15.0
+
+[security]
+allow_shell = true
+shell_timeout = 60.0
+sandbox_paths = []
+allowed_commands = []
+redact_keys = true

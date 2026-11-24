@@ -1,0 +1,2608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSYCHO-C.A.R.L.A. — Command Console</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<style>
+/* ==========================================================================
+   PSYCHO-C.A.R.L.A. — Holographic Command HUD
+   Every colour, radius and glow lives in :root. Tweak freely.
+   ========================================================================== */
+
+:root {
+  /* --- Core palette ---------------------------------------------------- */
+  --carla-bg:            #070B14;
+  --carla-bg-deep:       #04070D;
+  --carla-bg-panel:      rgba(12, 20, 34, 0.62);
+  --carla-bg-panel-solid:#0C1422;
+  --carla-bg-elevated:   rgba(18, 28, 46, 0.78);
+
+  /* --- Accents ---------------------------------------------------------- */
+  --carla-cyan:          #00E5FF;
+  --carla-cobalt:        #2979FF;
+  --carla-cobalt-dim:    rgba(41, 121, 255, 0.22);
+  --carla-cyan-dim:      rgba(0, 229, 255, 0.18);
+  --carla-amber:         #FFB300;
+  --carla-red:           #FF4D5E;
+  --carla-green:         #00E676;
+
+  /* --- Text ------------------------------------------------------------- */
+  --carla-text:          #EAF4FF;
+  --carla-text-dim:      #8FA6C4;
+  --carla-text-faint:    #55688A;
+  --carla-white:         #FFFFFF;
+
+  /* --- Structure -------------------------------------------------------- */
+  --carla-border:        rgba(0, 229, 255, 0.16);
+  --carla-border-strong: rgba(0, 229, 255, 0.38);
+  --carla-border-soft:   rgba(143, 166, 196, 0.12);
+  --carla-radius:        14px;
+  --carla-radius-sm:     9px;
+  --carla-radius-lg:     20px;
+
+  /* --- Glows ------------------------------------------------------------ */
+  --carla-glow-cyan:     0 0 12px rgba(0, 229, 255, 0.55);
+  --carla-glow-soft:     0 0 32px rgba(41, 121, 255, 0.18);
+  --carla-glow-strong:   0 0 24px rgba(0, 229, 255, 0.35), 0 0 64px rgba(41, 121, 255, 0.22);
+  --carla-shadow:        0 18px 48px rgba(0, 0, 0, 0.62);
+
+  /* --- Typography ------------------------------------------------------- */
+  --carla-font-display: 'Rajdhani', 'Eurostile', 'Bahnschrift', 'DIN Alternate',
+                         'Segoe UI', system-ui, sans-serif;
+  --carla-font-mono:    'JetBrains Mono', 'Cascadia Mono', 'Consolas',
+                         'SF Mono', ui-monospace, monospace;
+  --carla-font-body:    'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  --carla-tracking:     0.14em;
+  --carla-tracking-tight: 0.04em;
+
+  /* --- Motion ----------------------------------------------------------- */
+  --carla-speed-fast:   140ms;
+  --carla-speed:        260ms;
+  --carla-speed-slow:   520ms;
+  --carla-ease:         cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* --- Layout ----------------------------------------------------------- */
+  --carla-gap:          16px;
+  --carla-gap-sm:       10px;
+  --carla-header-h:     62px;
+}
+
+/* ==========================================================================
+   Reset & base
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--carla-bg);
+  color: var(--carla-text);
+  font-family: var(--carla-font-body);
+  font-size: 14px;
+  overflow: hidden;
+}
+
+body {
+  /* Layered holographic backdrop */
+  background:
+    radial-gradient(1200px 780px at 50% -12%, rgba(41,121,255,0.16), transparent 62%),
+    radial-gradient(900px 620px at 88% 108%, rgba(0,229,255,0.10), transparent 60%),
+    radial-gradient(700px 520px at 8% 92%, rgba(41,121,255,0.09), transparent 58%),
+    linear-gradient(175deg, var(--carla-bg) 0%, var(--carla-bg-deep) 100%);
+  background-attachment: fixed;
+}
+
+/* Hexagonal / reticle grid overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.30;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.055) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse at 50% 40%, #000 25%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 40%, #000 25%, transparent 78%);
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.42;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0,229,255,0.028) 0 1px, transparent 1px 3px);
+}
+
+::selection { background: var(--carla-cyan-dim); color: var(--carla-white); }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(var(--carla-cobalt-dim), var(--carla-cyan-dim));
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--carla-cyan); background-clip: padding-box; }
+
+/* ==========================================================================
+   App shell
+   ========================================================================== */
+.app {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: var(--carla-header-h) 1fr;
+  height: 100vh;
+}
+
+/* --- Header ------------------------------------------------------------ */
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--carla-gap);
+  padding: 0 20px;
+  border-bottom: 1px solid var(--carla-border);
+  background: linear-gradient(180deg, rgba(12,20,34,0.86), rgba(7,11,20,0.62));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 1px 0 var(--carla-cyan-dim), 0 10px 30px rgba(0,0,0,0.45);
+}
+
+.brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+
+.brand-mark {
+  position: relative;
+  width: 34px; height: 34px;
+  flex: 0 0 34px;
+  border-radius: 50%;
+  border: 1.5px solid var(--carla-cyan);
+  display: grid; place-items: center;
+  box-shadow: var(--carla-glow-cyan), inset 0 0 12px rgba(0,229,255,0.28);
+  animation: mark-pulse 3.4s var(--carla-ease) infinite;
+}
+.brand-mark::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  border: 1px dashed rgba(0,229,255,0.42);
+  animation: spin 9s linear infinite;
+}
+.brand-mark svg { width: 17px; height: 17px; stroke: var(--carla-cyan); fill: none;
+                  stroke-width: 1.7; filter: drop-shadow(0 0 4px var(--carla-cyan)); }
+
+@keyframes mark-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(0,229,255,0.5), inset 0 0 12px rgba(0,229,255,0.25); }
+  50%      { box-shadow: 0 0 22px rgba(0,229,255,0.85), inset 0 0 18px rgba(0,229,255,0.45); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.brand-text { min-width: 0; }
+.brand-title {
+  font-family: var(--carla-font-display);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: var(--carla-tracking);
+  color: var(--carla-white);
+  text-shadow: 0 0 14px var(--carla-cyan-dim);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.brand-sub {
+  font-family: var(--carla-font-mono);
+  font-size: 9.5px;
+  letter-spacing: var(--carla-tracking);
+  color: var(--carla-text-faint);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.header-spacer { flex: 1 1 auto; }
+
+.header-stats { display: flex; gap: 9px; align-items: center; flex-wrap: nowrap; }
+
+.hstat {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 5px 11px;
+  border: 1px solid var(--carla-border-soft);
+  border-radius: var(--carla-radius-sm);
+  background: var(--carla-bg-panel);
+  min-width: 74px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.hstat-label {
+  font-family: var(--carla-font-mono);
+  font-size: 8.5px; letter-spacing: 0.16em;
+  color: var(--carla-text-faint); text-transform: uppercase;
+}
+.hstat-value {
+  font-family: var(--carla-font-mono);
+  font-size: 12.5px; font-weight: 600;
+  color: var(--carla-cyan);
+  text-shadow: 0 0 9px var(--carla-cyan-dim);
+  white-space: nowrap;
+}
+.hstat-value.warn { color: var(--carla-amber); text-shadow: 0 0 9px rgba(255,179,0,0.35); }
+.hstat-value.bad  { color: var(--carla-red);   text-shadow: 0 0 9px rgba(255,77,94,0.35); }
+
+/* ==========================================================================
+   Main grid
+   ========================================================================== */
+.main {
+  display: grid;
+  grid-template-columns: 268px minmax(0, 1fr) 330px;
+  gap: var(--carla-gap);
+  padding: var(--carla-gap);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.column { display: flex; flex-direction: column; gap: var(--carla-gap); min-height: 0; overflow: hidden; }
+
+/* ==========================================================================
+   Glassmorphic panels
+   ========================================================================== */
+.panel {
+  position: relative;
+  border: 1px solid var(--carla-border);
+  border-radius: var(--carla-radius);
+  background: var(--carla-bg-panel);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: var(--carla-shadow), inset 0 1px 0 rgba(255,255,255,0.045);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Corner reticles — the HUD signature */
+.panel::before,
+.panel::after {
+  content: '';
+  position: absolute;
+  width: 13px; height: 13px;
+  border: 1px solid var(--carla-cyan);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.panel::before { top: 7px; left: 7px; border-right: 0; border-bottom: 0; border-radius: 3px 0 0 0; }
+.panel::after  { bottom: 7px; right: 7px; border-left: 0; border-top: 0; border-radius: 0 0 3px 0; }
+
+.panel-head {
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--carla-border-soft);
+  flex: 0 0 auto;
+}
+.panel-title {
+  font-family: var(--carla-font-display);
+  font-size: 11.5px; font-weight: 700;
+  letter-spacing: var(--carla-tracking);
+  text-transform: uppercase;
+  color: var(--carla-text);
+}
+.panel-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px; height: 11px;
+  margin-right: 8px;
+  vertical-align: -1px;
+  background: linear-gradient(180deg, var(--carla-cyan), var(--carla-cobalt));
+  box-shadow: var(--carla-glow-cyan);
+  border-radius: 2px;
+}
+.panel-badge {
+  margin-left: auto;
+  font-family: var(--carla-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--carla-text-faint);
+  padding: 2px 7px;
+  border: 1px solid var(--carla-border-soft);
+  border-radius: 99px;
+}
+.panel-body { padding: 12px 14px; overflow-y: auto; flex: 1 1 auto; min-height: 0; }
+.panel-body.flush { padding: 0; }
+.panel-foot {
+  padding: 8px 14px;
+  border-top: 1px solid var(--carla-border-soft);
+  flex: 0 0 auto;
+}
+
+/* ==========================================================================
+   Voice Core — the central animated ring
+   ========================================================================== */
+.voice-core {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 26px 0 20px;
+  flex: 0 0 auto;
+}
+
+.core-wrap { position: relative; width: 232px; height: 232px; display: grid; place-items: center; }
+
+/* Outer reticle rings */
+.core-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid var(--carla-border);
+  pointer-events: none;
+}
+.core-ring.r1 { inset: 0; border-style: dashed; opacity: 0.42; animation: spin 26s linear infinite; }
+.core-ring.r2 { inset: 15px; border-color: var(--carla-border-soft); opacity: 0.6; animation: spin 18s linear infinite reverse; }
+.core-ring.r3 { inset: 30px; border-color: var(--carla-cyan-dim); opacity: 0.75; }
+.core-ring.r4 { inset: 44px; border-style: dotted; border-color: var(--carla-cobalt-dim); animation: spin 11s linear infinite; }
+
+/* Tick marks around the core */
+.core-ticks {
+  position: absolute; inset: 6px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(0,229,255,0.32) 0deg 0.7deg,
+    transparent 0.7deg 6deg
+  );
+  mask: radial-gradient(circle, transparent 69%, #000 70%, #000 100%);
+  -webkit-mask: radial-gradient(circle, transparent 69%, #000 70%, #000 100%);
+  opacity: 0.65;
+}
+
+/* The waveform ring itself */
+.core-wave {
+  position: absolute;
+  inset: 52px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.core-wave svg { width: 100%; height: 100%; overflow: visible; }
+
+.wave-path {
+  fill: none;
+  stroke: var(--carla-cyan);
+  stroke-width: 2;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 5px var(--carla-cyan));
+  transition: stroke var(--carla-speed) var(--carla-ease);
+}
+.wave-path.w2 { stroke: var(--carla-cobalt); opacity: 0.62; stroke-width: 1.4; }
+.wave-path.w3 { stroke: var(--carla-cyan); opacity: 0.30; stroke-width: 1; }
+
+/* Core nucleus */
+.core-nucleus {
+  position: relative;
+  width: 108px; height: 108px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: radial-gradient(circle at 38% 32%, rgba(41,121,255,0.32), rgba(4,7,13,0.92) 68%);
+  border: 1px solid var(--carla-border-strong);
+  box-shadow: inset 0 0 26px rgba(0,229,255,0.18), 0 0 26px rgba(0,229,255,0.18);
+  transition: all var(--carla-speed) var(--carla-ease);
+}
+.core-nucleus .glyph {
+  font-family: var(--carla-font-display);
+  font-size: 26px; font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--carla-white);
+  text-shadow: 0 0 14px var(--carla-cyan), 0 0 32px var(--carla-cobalt);
+  transition: color var(--carla-speed) var(--carla-ease);
+}
+
+/* State: listening */
+.voice-core.listening .core-nucleus {
+  border-color: var(--carla-cyan);
+  box-shadow: inset 0 0 32px rgba(0,229,255,0.38), 0 0 42px rgba(0,229,255,0.5);
+  animation: listen-pulse 1.15s ease-in-out infinite;
+}
+.voice-core.listening .glyph { color: var(--carla-cyan); }
+.voice-core.listening .core-ring.r3 { border-color: var(--carla-cyan); opacity: 1; }
+.voice-core.listening .core-ticks { opacity: 1; animation: spin 5s linear infinite; }
+
+/* State: speaking */
+.voice-core.speaking .core-nucleus {
+  border-color: var(--carla-amber);
+  box-shadow: inset 0 0 32px rgba(255,179,0,0.34), 0 0 42px rgba(255,179,0,0.42);
+}
+.voice-core.speaking .glyph { color: var(--carla-amber); text-shadow: 0 0 14px var(--carla-amber); }
+.voice-core.speaking .wave-path { stroke: var(--carla-amber); }
+.voice-core.speaking .wave-path.w2 { stroke: #FF8F00; }
+
+@keyframes listen-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.055); }
+}
+
+/* Status read-out under the core */
+.core-status {
+  margin-top: 15px;
+  text-align: center;
+  min-height: 40px;
+}
+.core-state {
+  font-family: var(--carla-font-display);
+  font-size: 12px; font-weight: 600;
+  letter-spacing: var(--carla-tracking);
+  text-transform: uppercase;
+  color: var(--carla-cyan);
+  text-shadow: 0 0 12px var(--carla-cyan-dim);
+}
+.core-state.listening { color: var(--carla-green); text-shadow: 0 0 12px rgba(0,230,118,0.45); }
+.core-state.speaking  { color: var(--carla-amber); text-shadow: 0 0 12px rgba(255,179,0,0.45); }
+.core-state.error     { color: var(--carla-red); }
+.core-transcript {
+  margin-top: 5px;
+  font-family: var(--carla-font-mono);
+  font-size: 11px;
+  color: var(--carla-text-dim);
+  max-width: 330px;
+  min-height: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Controls
+   ========================================================================== */
+.btn {
+  font-family: var(--carla-font-display);
+  font-size: 11px; font-weight: 600;
+  letter-spacing: var(--carla-tracking);
+  text-transform: uppercase;
+  color: var(--carla-text);
+  background: linear-gradient(180deg, rgba(41,121,255,0.18), rgba(41,121,255,0.06));
+  border: 1px solid var(--carla-border);
+  border-radius: var(--carla-radius-sm);
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all var(--carla-speed-fast) var(--carla-ease);
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--carla-cyan);
+  color: var(--carla-white);
+  box-shadow: var(--carla-glow-cyan);
+  background: linear-gradient(180deg, rgba(0,229,255,0.22), rgba(41,121,255,0.10));
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn.primary {
+  background: linear-gradient(180deg, rgba(0,229,255,0.26), rgba(41,121,255,0.18));
+  border-color: var(--carla-border-strong);
+  color: var(--carla-white);
+  box-shadow: 0 0 18px rgba(0,229,255,0.22);
+}
+.btn.primary:hover:not(:disabled) { box-shadow: var(--carla-glow-strong); }
+.btn.danger:hover:not(:disabled) {
+  border-color: var(--carla-red); box-shadow: 0 0 14px rgba(255,77,94,0.4);
+  color: var(--carla-red);
+}
+.btn.ghost { background: transparent; }
+.btn.sm { padding: 5px 9px; font-size: 9.5px; letter-spacing: 0.1em; }
+.btn.icon { padding: 7px 9px; }
+.btn-row { display: flex; gap: 7px; flex-wrap: wrap; }
+
+input[type="text"], input[type="number"], textarea, select {
+  width: 100%;
+  font-family: var(--carla-font-mono);
+  font-size: 11.5px;
+  color: var(--carla-text);
+  background: rgba(4, 8, 15, 0.72);
+  border: 1px solid var(--carla-border-soft);
+  border-radius: var(--carla-radius-sm);
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color var(--carla-speed-fast) var(--carla-ease),
+              box-shadow var(--carla-speed-fast) var(--carla-ease);
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--carla-cyan);
+  box-shadow: 0 0 0 1px var(--carla-cyan-dim), 0 0 14px rgba(0,229,255,0.20);
+}
+input::placeholder, textarea::placeholder { color: var(--carla-text-faint); }
+textarea { resize: vertical; line-height: 1.55; }
+select option { background: var(--carla-bg-panel-solid); color: var(--carla-text); }
+
+label.field { display: block; margin-bottom: 9px; }
+label.field > span {
+  display: block;
+  font-family: var(--carla-font-mono);
+  font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--carla-text-faint);
+  margin-bottom: 4px;
+}
+
+/* ==========================================================================
+   Agent list (left column)
+   ========================================================================== */
+.agent-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--carla-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--carla-speed-fast) var(--carla-ease);
+  margin-bottom: 4px;
+}
+.agent-item:hover { background: rgba(41,121,255,0.10); border-color: var(--carla-border-soft); }
+.agent-item.active {
+  background: linear-gradient(90deg, rgba(0,229,255,0.16), rgba(41,121,255,0.05));
+  border-color: var(--carla-border-strong);
+  box-shadow: inset 2px 0 0 var(--carla-cyan), 0 0 14px rgba(0,229,255,0.10);
+}
+.agent-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--carla-text-faint);
+  flex: 0 0 7px;
+  box-shadow: 0 0 7px currentColor;
+  transition: all var(--carla-speed) var(--carla-ease);
+}
+.agent-item.active .agent-dot { background: var(--carla-cyan); color: var(--carla-cyan); }
+.agent-item.busy .agent-dot { background: var(--carla-amber); color: var(--carla-amber);
+                              animation: blink 0.85s ease-in-out infinite; }
+.agent-meta { min-width: 0; flex: 1 1 auto; }
+.agent-name {
+  font-family: var(--carla-font-display);
+  font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+  color: var(--carla-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.agent-desc {
+  font-size: 9.5px; color: var(--carla-text-faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.agent-mode {
+  font-family: var(--carla-font-mono);
+  font-size: 7px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--carla-text-faint);
+  border: 1px solid var(--carla-border-soft);
+  border-radius: 99px;
+  padding: 1px 5px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+/* ==========================================================================
+   Tier switcher
+   ========================================================================== */
+.tier-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px;
+  border-radius: var(--carla-radius-sm);
+  border: 1px solid var(--carla-border-soft);
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all var(--carla-speed-fast) var(--carla-ease);
+  background: rgba(4,8,15,0.42);
+}
+.tier-item:hover { border-color: var(--carla-border); background: rgba(41,121,255,0.10); }
+.tier-item.active {
+  border-color: var(--carla-cyan);
+  background: linear-gradient(90deg, rgba(0,229,255,0.16), transparent);
+  box-shadow: 0 0 16px rgba(0,229,255,0.18);
+}
+.tier-radio {
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 1.5px solid var(--carla-text-faint);
+  flex: 0 0 12px;
+  transition: all var(--carla-speed-fast) var(--carla-ease);
+}
+.tier-item.active .tier-radio {
+  border-color: var(--carla-cyan);
+  background: var(--carla-cyan);
+  box-shadow: 0 0 10px var(--carla-cyan);
+}
+.tier-meta { min-width: 0; flex: 1 1 auto; }
+.tier-alias {
+  font-family: var(--carla-font-display);
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.07em;
+  color: var(--carla-text);
+}
+.tier-model {
+  font-family: var(--carla-font-mono);
+  font-size: 9px; color: var(--carla-text-faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   Chat / transcript
+   ========================================================================== */
+.chat-log {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 14px;
+  min-height: 0;
+}
+
+.msg { display: flex; gap: 11px; animation: fade-up var(--carla-speed) var(--carla-ease); }
+@keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.msg-avatar {
+  width: 28px; height: 28px; flex: 0 0 28px;
+  border-radius: 8px;
+  display: grid; place-items: center;
+  font-family: var(--carla-font-display);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+  border: 1px solid var(--carla-border);
+}
+.msg.user .msg-avatar { background: rgba(41,121,255,0.20); color: var(--carla-cobalt); }
+.msg.assistant .msg-avatar {
+  background: rgba(0,229,255,0.16); color: var(--carla-cyan);
+  box-shadow: 0 0 12px var(--carla-cyan-dim);
+}
+.msg-body { flex: 1 1 auto; min-width: 0; }
+.msg-role {
+  font-family: var(--carla-font-mono);
+  font-size: 8.5px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--carla-text-faint);
+  margin-bottom: 4px;
+}
+.msg.assistant .msg-role { color: var(--carla-cyan); }
+.msg-text {
+  font-size: 13px; line-height: 1.62; color: var(--carla-text);
+  word-wrap: break-word; overflow-wrap: anywhere;
+}
+.msg-text p { margin: 0 0 9px; }
+.msg-text p:last-child { margin-bottom: 0; }
+.msg-text ul, .msg-text ol { margin: 6px 0; padding-left: 20px; }
+.msg-text li { margin: 3px 0; }
+.msg-text strong { color: var(--carla-white); font-weight: 600; }
+.msg-text code {
+  font-family: var(--carla-font-mono); font-size: 11.5px;
+  background: rgba(0,229,255,0.10);
+  border: 1px solid var(--carla-border-soft);
+  border-radius: 4px; padding: 1px 5px; color: var(--carla-cyan);
+}
+.msg-text pre {
+  margin: 10px 0;
+  padding: 13px 15px;
+  background: rgba(3, 6, 12, 0.92);
+  border: 1px solid var(--carla-border-soft);
+  border-left: 2px solid var(--carla-cyan);
+  border-radius: var(--carla-radius-sm);
+  overflow-x: auto;
+  box-shadow: inset 0 0 22px rgba(0,0,0,0.55);
+}
+.msg-text pre code {
+  background: none; border: 0; padding: 0;
+  color: #C9E9FF; font-size: 11.5px; line-height: 1.6;
+  white-space: pre;
+  display: block;
+}
+.msg-text table { border-collapse: collapse; margin: 10px 0; font-size: 12px; width: 100%; }
+.msg-text th, .msg-text td { border: 1px solid var(--carla-border-soft); padding: 6px 10px; text-align: left; }
+.msg-text th { background: rgba(41,121,255,0.14); color: var(--carla-cyan); font-weight: 600; }
+.msg-text blockquote {
+  margin: 9px 0; padding: 5px 13px;
+  border-left: 2px solid var(--carla-cobalt);
+  background: rgba(41,121,255,0.07);
+  color: var(--carla-text-dim);
+}
+
+/* Speech channel — what C.A.R.L.A. actually said */
+.speech-chip {
+  margin-top: 8px;
+  padding: 8px 11px;
+  border-radius: var(--carla-radius-sm);
+  border: 1px dashed rgba(0,229,255,0.28);
+  background: rgba(0,229,255,0.05);
+  font-size: 11.5px;
+  color: var(--carla-cyan);
+  display: flex; gap: 8px; align-items: flex-start;
+}
+.speech-chip .sc-icon { flex: 0 0 auto; margin-top: 1px; opacity: 0.85; }
+
+/* Tool call strip */
+.tool-strip {
+  margin-top: 7px;
+  display: flex; flex-wrap: wrap; gap: 5px;
+}
+.tool-pill {
+  font-family: var(--carla-font-mono);
+  font-size: 8.5px; letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 99px;
+  border: 1px solid var(--carla-border-soft);
+  background: rgba(41,121,255,0.10);
+  color: var(--carla-text-dim);
+}
+.tool-pill.ok { border-color: rgba(0,230,118,0.32); color: var(--carla-green); background: rgba(0,230,118,0.08); }
+.tool-pill.fail { border-color: rgba(255,77,94,0.32); color: var(--carla-red); background: rgba(255,77,94,0.08); }
+
+/* Composer */
+.composer {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--carla-border-soft);
+  padding: 12px 16px;
+  display: flex; gap: 10px; align-items: flex-end;
+  background: linear-gradient(180deg, transparent, rgba(4,8,15,0.55));
+}
+.composer textarea {
+  flex: 1 1 auto;
+  min-height: 42px; max-height: 170px;
+  font-family: var(--carla-font-body);
+  font-size: 13px;
+}
+.composer-hint {
+  font-family: var(--carla-font-mono);
+  font-size: 8.5px; letter-spacing: 0.11em;
+  color: var(--carla-text-faint);
+  text-transform: uppercase;
+}
+.composer-side {
+  display: flex; flex-direction: column; gap: 6px;
+  align-items: flex-end;
+}
+
+/* ==========================================================================
+   Right column widgets
+   ========================================================================== */
+.metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.metric {
+  padding: 9px 11px;
+  border: 1px solid var(--carla-border-soft);
+  border-radius: var(--carla-radius-sm);
+  background: rgba(4,8,15,0.42);
+}
+.metric-label {
+  font-family: var(--carla-font-mono);
+  font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--carla-text-faint);
+  margin-bottom: 3px;
+}
+.metric-value {
+  font-family: var(--carla-font-mono);
+  font-size: 15px; font-weight: 600;
+  color: var(--carla-cyan);
+  text-shadow: 0 0 10px var(--carla-cyan-dim);
+}
+.metric-value.warn { color: var(--carla-amber); text-shadow: 0 0 10px rgba(255,179,0,0.3); }
+.metric-value.bad  { color: var(--carla-red); text-shadow: 0 0 10px rgba(255,77,94,0.3); }
+.metric-unit { font-size: 9px; color: var(--carla-text-faint); margin-left: 2px; font-weight: 400; }
+
+/* Resource bars */
+.bar-row { margin-bottom: 10px; }
+.bar-row:last-child { margin-bottom: 0; }
+.bar-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-family: var(--carla-font-mono);
+  font-size: 9px; letter-spacing: 0.11em; text-transform: uppercase;
+  color: var(--carla-text-faint);
+  margin-bottom: 4px;
+}
+.bar-head b { color: var(--carla-text); font-weight: 600; font-size: 10.5px; letter-spacing: 0.04em; }
+.bar-track {
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(143,166,196,0.10);
+  overflow: hidden;
+  border: 1px solid var(--carla-border-soft);
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--carla-cobalt), var(--carla-cyan));
+  box-shadow: 0 0 9px var(--carla-cyan-dim);
+  transition: width var(--carla-speed) var(--carla-ease);
+}
+.bar-fill.warn { background: linear-gradient(90deg, #FF8F00, var(--carla-amber)); box-shadow: 0 0 9px rgba(255,179,0,0.35); }
+.bar-fill.bad  { background: linear-gradient(90deg, #C62839, var(--carla-red)); box-shadow: 0 0 9px rgba(255,77,94,0.35); }
+
+/* Memory list */
+.mem-item {
+  padding: 8px 10px;
+  border-radius: var(--carla-radius-sm);
+  border: 1px solid var(--carla-border-soft);
+  background: rgba(4,8,15,0.42);
+  margin-bottom: 6px;
+  transition: border-color var(--carla-speed-fast) var(--carla-ease);
+}
+.mem-item:hover { border-color: var(--carla-border); }
+.mem-text { font-size: 11.5px; line-height: 1.5; color: var(--carla-text); margin-bottom: 5px; }
+.mem-meta {
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--carla-font-mono);
+  font-size: 8.5px; color: var(--carla-text-faint);
+}
+.mem-kind {
+  padding: 1px 6px; border-radius: 99px;
+  border: 1px solid var(--carla-border-soft);
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.mem-del {
+  margin-left: auto; cursor: pointer; color: var(--carla-text-faint);
+  background: none; border: 0; font-size: 13px; line-height: 1; padding: 0 2px;
+}
+.mem-del:hover { color: var(--carla-red); }
+
+/* Cron job list */
+.job-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--carla-border-soft);
+  border-radius: var(--carla-radius-sm);
+  background: rgba(4,8,15,0.42);
+  margin-bottom: 6px;
+}
+.job-sched {
+  font-family: var(--carla-font-mono);
+  font-size: 10.5px; color: var(--carla-cyan);
+  background: rgba(0,229,255,0.09);
+  border: 1px solid var(--carla-border-soft);
+  border-radius: 5px; padding: 2px 7px; white-space: nowrap;
+  flex: 0 0 auto;
+}
+.job-name {
+  font-size: 11.5px; color: var(--carla-text);
+  flex: 1 1 auto; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.job-agent {
+  font-family: var(--carla-font-mono); font-size: 8.5px;
+  color: var(--carla-text-faint);
+  flex: 0 0 auto; max-width: 84px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.job-item .btn.sm { padding: 3px 6px; font-size: 9px; flex: 0 0 auto; }
+
+/* ==========================================================================
+   Settings editor
+   ========================================================================== */
+.editor-wrap {
+  position: absolute;
+  inset: 0;
+  background: rgba(4,7,13,0.96);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  z-index: 40;
+  display: none;
+  flex-direction: column;
+}
+.editor-wrap.open { display: flex; }
+.editor-head {
+  display: flex; align-items: center; gap: var(--carla-gap);
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--carla-border);
+  flex: 0 0 auto;
+}
+.editor-path {
+  font-family: var(--carla-font-mono);
+  font-size: 10.5px; color: var(--carla-text-dim);
+  flex: 1 1 auto; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.editor-body { flex: 1 1 auto; display: flex; min-height: 0; }
+/* The Model Manager reuses the overlay shell but stacks its content
+   vertically — the settings editor's row layout does not suit a list. */
+.editor-body.column { flex-direction: column; overflow-y: auto; padding: 16px 20px; gap: 4px; justify-content: flex-start; }
+.editor-body.column > div { width: 100%; flex: 0 0 auto; }
+/* .editor-path is flex:1 for the settings editor's single-line path;
+   inside the Model Manager it must not stretch to fill the column. */
+.editor-body.column > p.editor-path { flex: 0 0 auto; margin: 0 0 6px; white-space: normal; }
+.editor-body.column > p.editor-path#mmStatus { min-height: 18px; }
+/* Model cards sit two-up so the whole catalog is scannable at a glance. */
+#mmCatalog {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px;
+}
+#mmLocal {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+#mmCatalog .mem-item, #mmLocal .mem-item { height: 100%; box-sizing: border-box; }
+.editor-text {
+  flex: 1 1 auto;
+  border: 0; border-radius: 0;
+  background: rgba(2,4,9,0.9);
+  padding: 16px 20px;
+  font-size: 12.5px; line-height: 1.65;
+  resize: none;
+  min-height: 0;
+}
+.editor-text:focus { box-shadow: none; border: 0; }
+.editor-status {
+  font-family: var(--carla-font-mono);
+  font-size: 10px; padding: 7px 18px;
+  border-top: 1px solid var(--carla-border-soft);
+  color: var(--carla-text-faint);
+  flex: 0 0 auto;
+}
+.editor-status.ok { color: var(--carla-green); }
+.editor-status.err { color: var(--carla-red); }
+
+/* ==========================================================================
+   Toast notifications
+   ========================================================================== */
+.toasts {
+  position: fixed;
+  bottom: 18px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  display: flex; flex-direction: column; gap: 8px; align-items: center;
+  pointer-events: none;
+}
+.toast {
+  padding: 9px 17px;
+  border-radius: 99px;
+  border: 1px solid var(--carla-border-strong);
+  background: rgba(12,20,34,0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: var(--carla-glow-soft), var(--carla-shadow);
+  font-family: var(--carla-font-display);
+  font-size: 11.5px; letter-spacing: 0.08em;
+  color: var(--carla-text);
+  animation: toast-in var(--carla-speed) var(--carla-ease);
+}
+.toast.ok  { border-color: rgba(0,230,118,0.45); color: var(--carla-green); }
+.toast.err { border-color: rgba(255,77,94,0.45); color: var(--carla-red); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+/* ==========================================================================
+   Boot overlay
+   ========================================================================== */
+.boot {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--carla-bg-deep);
+  display: grid; place-items: center;
+  transition: opacity var(--carla-speed-slow) var(--carla-ease);
+}
+.boot.hide { opacity: 0; pointer-events: none; }
+.boot-inner { text-align: center; }
+.boot-logo {
+  font-family: var(--carla-font-display);
+  font-size: 42px; font-weight: 700;
+  letter-spacing: 0.3em;
+  color: var(--carla-white);
+  text-shadow: 0 0 26px var(--carla-cyan), 0 0 64px var(--carla-cobalt);
+  margin-bottom: 14px;
+}
+.boot-line {
+  font-family: var(--carla-font-mono);
+  font-size: 10.5px; letter-spacing: 0.22em;
+  color: var(--carla-cyan);
+  text-transform: uppercase;
+  min-height: 17px;
+}
+.boot-bar {
+  width: 250px; height: 2px;
+  margin: 18px auto 0;
+  background: rgba(0,229,255,0.14);
+  border-radius: 99px; overflow: hidden;
+}
+.boot-bar span {
+  display: block; height: 100%; width: 40%;
+  background: linear-gradient(90deg, transparent, var(--carla-cyan), transparent);
+  animation: sweep 1.15s ease-in-out infinite;
+}
+@keyframes sweep { 0% { transform: translateX(-110%); } 100% { transform: translateX(360%); } }
+
+/* ==========================================================================
+   Tabs
+   ========================================================================== */
+.tabs { display: flex; gap: 3px; padding: 3px; border-radius: var(--carla-radius-sm);
+        background: rgba(4,8,15,0.55); border: 1px solid var(--carla-border-soft); }
+.tab {
+  flex: 1 1 auto;
+  font-family: var(--carla-font-display);
+  font-size: 9.5px; font-weight: 600; letter-spacing: 0.11em; text-transform: uppercase;
+  padding: 5px 8px; border-radius: 6px;
+  color: var(--carla-text-faint);
+  background: transparent; border: 0; cursor: pointer;
+  transition: all var(--carla-speed-fast) var(--carla-ease);
+  white-space: nowrap;
+}
+.tab:hover { color: var(--carla-text); }
+.tab.active {
+  color: var(--carla-white);
+  background: linear-gradient(180deg, rgba(0,229,255,0.20), rgba(41,121,255,0.10));
+  box-shadow: 0 0 12px rgba(0,229,255,0.22);
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+@media (max-width: 1320px) {
+  .main { grid-template-columns: 228px minmax(0,1fr) 288px; }
+}
+@media (max-width: 1080px) {
+  .main { grid-template-columns: 1fr; grid-template-rows: auto minmax(0,1fr) auto; overflow-y: auto; }
+  .column { overflow: visible; }
+  .header-stats { display: none; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- ====================== BOOT OVERLAY ====================== -->
+<div class="boot" id="boot">
+  <div class="boot-inner">
+    <div class="boot-logo">C.A.R.L.A.</div>
+    <div class="boot-line" id="bootLine">Initialising systems</div>
+    <div class="boot-bar"><span></span></div>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- ====================== HEADER ====================== -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24"><path d="M12 2 L21 7 v10 L12 22 L3 17 V7 Z"/><circle cx="12" cy="12" r="3.2"/></svg>
+      </div>
+      <div class="brand-text">
+        <div class="brand-title">PSYCHO-C.A.R.L.A.</div>
+        <div class="brand-sub" id="brandSub">Personal Intelligence // Local-First</div>
+      </div>
+    </div>
+
+    <div class="header-spacer"></div>
+
+    <div class="header-stats">
+      <div class="hstat">
+        <span class="hstat-label">Tier</span>
+        <span class="hstat-value" id="hdrTier">—</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-label">Latency</span>
+        <span class="hstat-value" id="hdrLatency">—</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-label">Tok/s</span>
+        <span class="hstat-value" id="hdrTps">—</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-label">RAM</span>
+        <span class="hstat-value" id="hdrRam">—</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-label">VRAM</span>
+        <span class="hstat-value" id="hdrVram">—</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-label">Link</span>
+        <span class="hstat-value" id="hdrLink">—</span>
+      </div>
+    </div>
+
+    <button class="btn ghost sm" id="btnSettings" title="Edit psycho_carla.toml">⚙ Config</button>
+  </header>
+
+  <!-- ====================== MAIN ====================== -->
+  <div class="main">
+
+    <!-- ---------- LEFT COLUMN ---------- -->
+    <div class="column">
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Agents</span>
+          <span class="panel-badge" id="agentCount">8</span>
+        </div>
+        <div class="panel-body" id="agentList"></div>
+      </section>
+
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Capability Tiers</span>
+          <span class="panel-badge" id="tierBadge">—</span>
+        </div>
+        <div class="panel-body" id="tierList"></div>
+      </section>
+
+      <section class="panel" style="flex: 1 1 auto; min-height: 140px;">
+        <div class="panel-head">
+          <span class="panel-title">Tool Matrix</span>
+          <span class="panel-badge" id="toolCount">0</span>
+        </div>
+        <div class="panel-body" id="toolList"></div>
+      </section>
+    </div>
+
+    <!-- ---------- CENTER COLUMN ---------- -->
+    <div class="column">
+      <section class="panel" style="flex: 0 0 auto;">
+        <!-- Voice Core -->
+        <div class="voice-core" id="voiceCore">
+          <div class="core-wrap">
+            <div class="core-ring r1"></div>
+            <div class="core-ring r2"></div>
+            <div class="core-ring r3"></div>
+            <div class="core-ring r4"></div>
+            <div class="core-ticks"></div>
+
+            <div class="core-wave">
+              <svg viewBox="0 0 200 200">
+                <circle class="wave-path w3" cx="100" cy="100" r="76"></circle>
+                <circle class="wave-path w2" cx="100" cy="100" r="66"></circle>
+                <circle class="wave-path"   cx="100" cy="100" r="56"></circle>
+              </svg>
+            </div>
+
+            <div class="core-nucleus">
+              <span class="glyph" id="coreGlyph">F</span>
+            </div>
+          </div>
+
+          <div class="core-status">
+            <div class="core-state" id="coreState">Standby</div>
+            <div class="core-transcript" id="coreTranscript"></div>
+          </div>
+        </div>
+
+        <div class="panel-foot">
+          <div class="btn-row" style="justify-content:center;">
+            <button class="btn primary" id="btnMic">◉ Listen</button>
+            <button class="btn" id="btnSpeak" title="Speak the last response">🔊 Speak</button>
+            <button class="btn" id="btnStop" title="Stop speaking">■ Stop</button>
+            <button class="btn ghost" id="btnWake" title="Toggle wake word">👂 Wake</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" style="flex: 1 1 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Console</span>
+          <span class="panel-badge" id="consoleBadge">ready</span>
+        </div>
+        <div class="chat-log" id="chatLog">
+          <div class="msg assistant">
+            <div class="msg-avatar">F</div>
+            <div class="msg-body">
+              <div class="msg-role">C.A.R.L.A.</div>
+              <div class="msg-text">
+                <p>All systems nominal, Boss. The suite is warmed up and the console is yours.</p>
+                <p>Pick an agent on the left, choose a capability tier, and give me something to chew on.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="composer">
+          <div style="flex:1 1 auto; min-width:0;">
+            <textarea id="prompt" rows="1" placeholder="Address C.A.R.L.A., Boss…"></textarea>
+            <div class="composer-hint" id="composerHint">Enter to send · Shift+Enter for a new line · Ctrl+/ for command mode</div>
+          </div>
+          <div class="composer-side">
+            <button class="btn primary" id="btnSend">Send ▸</button>
+            <button class="btn ghost icon" id="btnClear" title="Clear console">⌫</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ---------- RIGHT COLUMN ---------- -->
+    <div class="column">
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Efficiency Telemetry</span>
+          <span class="panel-badge" id="telBadge">60 min</span>
+        </div>
+        <div class="panel-body">
+          <div class="metric-grid">
+            <div class="metric">
+              <div class="metric-label">Avg Latency</div>
+              <div class="metric-value" id="mLatency">—<span class="metric-unit">ms</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Tokens / sec</div>
+              <div class="metric-value" id="mTps">—</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Requests</div>
+              <div class="metric-value" id="mRequests">—</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Total Tokens</div>
+              <div class="metric-value" id="mTokens">—</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Energy</div>
+              <div class="metric-value" id="mEnergy">—<span class="metric-unit">J</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Power</div>
+              <div class="metric-value" id="mWatts">—<span class="metric-unit">W</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">FLOPs</div>
+              <div class="metric-value" id="mFlops">—</div>
+            </div>
+          </div>
+
+          <div style="margin-top:13px;">
+            <div class="bar-row">
+              <div class="bar-head"><span>CPU</span><b id="barCpuVal">0%</b></div>
+              <div class="bar-track"><div class="bar-fill" id="barCpu" style="width:0%"></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-head"><span>RAM</span><b id="barRamVal">0%</b></div>
+              <div class="bar-track"><div class="bar-fill" id="barRam" style="width:0%"></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-head"><span>VRAM</span><b id="barVramVal">0%</b></div>
+              <div class="bar-track"><div class="bar-fill" id="barVram" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" style="flex: 1 1 auto; min-height: 200px;">
+        <div class="panel-head">
+          <span class="panel-title">Memory Inspector</span>
+          <span class="panel-badge" id="memBadge">0</span>
+        </div>
+        <div class="panel-body">
+          <input type="text" id="memSearch" placeholder="Semantic search…" style="margin-bottom:10px;">
+          <div id="memList"></div>
+        </div>
+        <div class="panel-foot">
+          <div class="btn-row">
+            <button class="btn sm" id="btnMemRefresh">↻ Refresh</button>
+            <button class="btn sm ghost" id="btnMemAdd">+ Store</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Cron Scheduler</span>
+          <span class="panel-badge" id="jobBadge">0</span>
+        </div>
+        <div class="panel-body" style="max-height: 190px;">
+          <div id="jobList"></div>
+          <div style="display:flex; gap:6px; margin-top:9px;">
+            <input type="text" id="jobName" placeholder="Job name" style="flex:1 1 auto;">
+            <input type="text" id="jobSchedule" placeholder="*/5 * * * *" style="width:112px;">
+          </div>
+          <select id="jobAgent" style="margin-top:6px;"></select>
+        </div>
+        <div class="panel-foot">
+          <div class="btn-row">
+            <button class="btn sm primary" id="btnJobAdd">+ Schedule</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Skills Catalog</span>
+          <span class="panel-badge" id="skillBadge">0</span>
+        </div>
+        <div class="panel-body" style="max-height: 150px;">
+          <div id="skillList"></div>
+        </div>
+      </section>
+
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Learning Surfaces</span>
+          <span class="panel-badge" id="learnBadge">—</span>
+        </div>
+        <div class="panel-body" style="max-height: 130px;">
+          <div id="learnList"></div>
+        </div>
+      </section>
+
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Channels</span>
+          <span class="panel-badge" id="chanBadge">—</span>
+        </div>
+        <div class="panel-body" style="max-height: 130px;">
+          <div id="chanList"></div>
+        </div>
+      </section>
+
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Model Manager</span>
+          <span class="panel-badge" id="modelBadge">—</span>
+          <button class="btn ghost sm" id="btnModels" style="margin-left:auto;">Manage</button>
+        </div>
+        <div class="panel-body" style="max-height: 150px;">
+          <div id="modelList"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== MODEL MANAGER ====================== -->
+<div class="editor-wrap" id="modelMgr">
+  <div class="editor-head">
+    <span class="panel-title">Model Manager</span>
+    <span class="editor-path" id="mmHw">—</span>
+    <select id="mmEngine" style="width:auto; margin-left:auto;">
+      <option value="ollama">ollama</option>
+      <option value="llamacpp">llamacpp (GGUF)</option>
+      <option value="vllm">vllm</option>
+      <option value="sglang">sglang</option>
+    </select>
+    <button class="btn sm" id="mmRefresh">↻ Refresh</button>
+    <button class="btn sm ghost" id="mmClose">✕</button>
+  </div>
+  <div class="editor-body column">
+    <p class="editor-path" style="margin:0 0 12px;">
+      Download a model for a local engine. Models are stored in your
+      C.A.R.L.A. home folder, never inside the application.
+    </p>
+    <div style="margin-bottom:10px;">
+      <span class="editor-path" id="mmStatus"></span>
+    </div>
+    <div id="mmCatalog"></div>
+    <div class="panel-title" style="margin:16px 0 8px;">Installed on this machine</div>
+    <div id="mmLocal"></div>
+  </div>
+</div>
+
+<!-- ====================== CONFIG EDITOR ====================== -->
+<div class="editor-wrap" id="editor">
+  <div class="editor-head">
+    <span class="panel-title">Settings Editor</span>
+    <span class="editor-path" id="editorPath">psycho_carla.toml</span>
+    <button class="btn sm" id="btnEditorReload">↻ Reload</button>
+    <button class="btn sm primary" id="btnEditorSave">Save</button>
+    <button class="btn sm ghost" id="btnEditorClose">✕</button>
+  </div>
+  <div class="editor-body">
+    <textarea class="editor-text" id="editorText" spellcheck="false"></textarea>
+  </div>
+  <div class="editor-status" id="editorStatus">Ready.</div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+/* ==========================================================================
+   PSYCHO-C.A.R.L.A. — HUD controller
+   Drives the holographic console: WebSocket state, agent dispatch, tier
+   switching, memory inspection, cron management, telemetry and the config
+   editor.
+   ========================================================================== */
+'use strict';
+
+const state = {
+  ws: null,
+  agents: [],
+  tiers: [],
+  activeTier: '',
+  activeAgent: 'orchestrator',
+  sessionId: 'default',
+  busy: false,
+  lastSpeech: '',
+  lastDisplay: '',
+  micOn: false,
+  reconnectDelay: 900,
+  connected: false,
+};
+
+// --------------------------------------------------------------------------- //
+// Utilities
+// --------------------------------------------------------------------------- //
+const $ = (id) => document.getElementById(id);
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined && text !== null) n.textContent = text;
+  return n;
+}
+
+function fmtMs(ms) {
+  if (!ms && ms !== 0) return '—';
+  if (ms >= 1000) return (ms / 1000).toFixed(2) + 's';
+  return Math.round(ms) + 'ms';
+}
+
+function fmtNum(n) {
+  if (n === null || n === undefined) return '—';
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'k';
+  return String(Math.round(n * 100) / 100);
+}
+
+function toast(msg, kind) {
+  const t = el('div', 'toast' + (kind ? ' ' + kind : ''), msg);
+  $('toasts').appendChild(t);
+  setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.transition = 'opacity .3s';
+    setTimeout(() => t.remove(), 320);
+  }, 2600);
+}
+
+function escapeHtml(s) {
+  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+async function api(path, options) {
+  const res = await fetch(path, Object.assign({
+    headers: { 'Content-Type': 'application/json' },
+  }, options || {}));
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { detail = (await res.json()).detail || detail; } catch (e) { /* noop */ }
+    throw new Error(detail);
+  }
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('json') ? res.json() : res.text();
+}
+
+/* --------------------------------------------------------------------------
+   Markdown renderer — dependency-free, handles code fences, tables, lists.
+   ------------------------------------------------------------------------ */
+const CODE_TOKEN = '\u0000CODEBLOCK\u0000';
+
+function renderMarkdown(src) {
+  if (!src) return '';
+
+  // 1. Pull fenced code blocks out first so nothing else touches them.
+  const blocks = [];
+  let text = src.replace(/```([\w+\-.]*)\r?\n([\s\S]*?)```/g, (m, lang, code) => {
+    blocks.push(
+      '<pre><code class="lang-' + (lang || 'text').toLowerCase() + '">' +
+      code.replace(/\r/g, '').replace(/\n$/, '') + '</code></pre>'
+    );
+    return CODE_TOKEN + (blocks.length - 1) + CODE_TOKEN;
+  });
+
+  // 2. Inline formatting.
+  text = escapeHtml(text)
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    .replace(/^######\s+(.*)$/gm, '<h6>$1</h6>')
+    .replace(/^#####\s+(.*)$/gm, '<h5>$1</h5>')
+    .replace(/^####\s+(.*)$/gm, '<h4>$1</h4>')
+    .replace(/^###\s+(.*)$/gm, '<h3>$1</h3>')
+    .replace(/^##\s+(.*)$/gm, '<h3>$1</h3>')
+    .replace(/^#\s+(.*)$/gm, '<h3>$1</h3>')
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+    .replace(/^&gt;\s?(.*)$/gm, '<blockquote>$1</blockquote>');
+
+  // 3. Tables.
+  text = text.replace(
+    /(\|[^\n]*\|[ \t]*\r?\n\|[\s:\-|]+\|[ \t]*\r?\n(?:\|[^\n]*\|[ \t]*(?:\r?\n|$))*)/g,
+    (block) => {
+      const rows = block.trim().split('\n').filter(Boolean);
+      if (rows.length < 2) return block;
+      const head = rows[0].split('|').slice(1, -1).map(c => c.trim());
+      const body = rows.slice(2)
+        .map(r => r.split('|').slice(1, -1).map(c => c.trim()))
+        .filter(cells => cells.length && cells.some(c => c !== ''));
+      let html = '<table><thead><tr>' +
+        head.map(h => '<th>' + h + '</th>').join('') +
+        '</tr></thead><tbody>';
+      body.forEach(r => {
+        html += '<tr>' + r.map(c => '<td>' + c + '</td>').join('') + '</tr>';
+      });
+      return html + '</tbody></table>';
+    }
+  );
+
+  // 4. Bullet and numbered lists.
+  text = text.replace(/(?:^[ \t]*[-*+][ \t]+.*\r?\n?)+/gm, (block) => {
+    const items = block.trim().split('\n')
+      .map(l => '<li>' + l.replace(/^[ \t]*[-*+][ \t]+/, '') + '</li>');
+    return '<ul>' + items.join('') + '</ul>\n';
+  });
+  text = text.replace(/(?:^[ \t]*\d+[.)][ \t]+.*\r?\n?)+/gm, (block) => {
+    const items = block.trim().split('\n')
+      .map(l => '<li>' + l.replace(/^[ \t]*\d+[.)][ \t]+/, '') + '</li>');
+    return '<ol>' + items.join('') + '</ol>\n';
+  });
+
+  // 5. Paragraphs.
+  text = text.split(/\r?\n{2,}/).map(p => {
+    const t = p.trim();
+    if (!t) return '';
+    if (/^<(pre|ul|ol|table|h[1-6]|blockquote)/.test(t)) return t;
+    return '<p>' + t.replace(/\r?\n/g, '<br>') + '</p>';
+  }).join('\n');
+
+  // 6. Restore code blocks.
+  text = text.replace(new RegExp(CODE_TOKEN + '(\\d+)' + CODE_TOKEN, 'g'),
+    (m, i) => blocks[parseInt(i, 10)]);
+
+  return text;
+}
+
+/* --------------------------------------------------------------------------
+   Voice Core — the animated waveform ring
+   ------------------------------------------------------------------------ */
+const core = (() => {
+  const paths = Array.from(document.querySelectorAll('.core-wave .wave-path'));
+  const baseR = { 0: 76, 1: 66, 2: 56 };
+  let raf = null;
+  let phase = 0;
+  let mode = 'idle';   // idle | listening | speaking
+  let amp = 0.2;
+  let target = 0.2;
+
+  function pointOnCircle(r, angle) {
+    return [100 + r * Math.cos(angle), 100 + r * Math.sin(angle)];
+  }
+
+  function buildPath(r, harmonics, time) {
+    const steps = 128;
+    let d = '';
+    for (let i = 0; i <= steps; i++) {
+      const angle = (i / steps) * Math.PI * 2;
+      let displacement = 0;
+      for (let h = 0; h < harmonics; h++) {
+        displacement +=
+          Math.sin(angle * (h + 2) + time * (1.4 + h * 0.55) + h * 1.7) / (h + 1.6);
+      }
+      const rr = r + displacement * amp * (mode === 'idle' ? 0.7 : 3.4);
+      const p = pointOnCircle(rr, angle);
+      d += (i === 0 ? 'M' : 'L') + p[0].toFixed(2) + ' ' + p[1].toFixed(2) + ' ';
+    }
+    return d + 'Z';
+  }
+
+  function tick() {
+    phase += 0.016;
+    amp += (target - amp) * 0.12;
+    paths.forEach((p, idx) => {
+      const r = baseR[idx] || 60;
+      p.setAttribute('d', buildPath(r, idx === 0 ? 4 : (idx === 1 ? 3 : 2), phase));
+    });
+    raf = requestAnimationFrame(tick);
+  }
+
+  function setMode(m) {
+    mode = m;
+    const elCore = $('voiceCore');
+    elCore.classList.remove('listening', 'speaking');
+    if (m === 'listening') elCore.classList.add('listening');
+    if (m === 'speaking') elCore.classList.add('speaking');
+    target = (m === 'idle') ? 0.2 : 1.0;
+  }
+
+  function setState(label, cls) {
+    const s = $('coreState');
+    s.textContent = label;
+    s.className = 'core-state' + (cls ? ' ' + cls : '');
+  }
+
+  function start() { if (!raf) raf = requestAnimationFrame(tick); }
+
+  function pulse() {
+    target = 1.0;
+    setTimeout(() => { target = (mode === 'idle') ? 0.2 : 1.0; }, 420);
+  }
+
+  return { setMode, setState, start, pulse };
+})();
+
+/* --------------------------------------------------------------------------
+   WebSocket
+   ------------------------------------------------------------------------ */
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(proto + '://' + location.host + '/ws');
+  state.ws = ws;
+
+  ws.onopen = () => {
+    state.connected = true;
+    state.reconnectDelay = 900;
+    $('hdrLink').textContent = 'ONLINE';
+    $('hdrLink').className = 'hstat-value';
+    bootLine('Link established');
+  };
+
+  ws.onmessage = (ev) => {
+    let msg;
+    try { msg = JSON.parse(ev.data); } catch (e) { return; }
+    handleEvent(msg.type || '', msg.data || {});
+  };
+
+  ws.onclose = () => {
+    state.connected = false;
+    $('hdrLink').textContent = 'OFFLINE';
+    $('hdrLink').className = 'hstat-value bad';
+    setTimeout(connectWS, state.reconnectDelay);
+    state.reconnectDelay = Math.min(state.reconnectDelay * 1.5, 12000);
+  };
+
+  ws.onerror = () => { /* handled by onclose */ };
+}
+
+function bootLine(text) {
+  const b = $('bootLine');
+  if (b) b.textContent = text;
+}
+
+function handleEvent(type, data) {
+  switch (type) {
+    case 'snapshot':
+      applySnapshot(data);
+      break;
+    case 'telemetry':
+      applyTelemetry(data);
+      break;
+    case 'chat_user':
+      appendUser(data.prompt);
+      break;
+    case 'chat_response':
+    case 'agent_response':
+      appendAssistant(data);
+      break;
+    case 'voice_state':
+      applyVoice(data);
+      break;
+    case 'wake_word':
+      toast('Wake word detected', 'ok');
+      core.pulse();
+      break;
+    case 'voice_command':
+      $('prompt').value = data.text || '';
+      sendPrompt();
+      break;
+    case 'tier_changed':
+      $('hdrTier').textContent = data.tier;
+      loadTiers();
+      break;
+    case 'agent_status':
+      setAgentBusy(data.agent, data.state === 'working');
+      break;
+    case 'job_added':
+    case 'job_removed':
+    case 'job_completed':
+    case 'job_failed':
+      loadJobs();
+      break;
+    case 'memory_changed':
+      loadMemory();
+      break;
+    case 'config_reloaded':
+      toast('Configuration reloaded', 'ok');
+      break;
+    default:
+      break;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Rendering
+   ------------------------------------------------------------------------ */
+function applySnapshot(snap) {
+  if (!snap) return;
+  state.agents = snap.agents || [];
+  state.activeTier = snap.active_tier || '';
+  $('hdrTier').textContent = state.activeTier || '—';
+  renderAgents();
+  renderTiers(snap.tiers || []);
+  if (snap.tools) renderTools(snap.tools);
+  if (snap.jobs) renderJobs(snap.jobs);
+  if (snap.memory) $('memBadge').textContent = snap.memory.memories + ' stored';
+  if (snap.voice) applyVoice(snap.voice);
+  if (snap.hardware) {
+    const hw = snap.hardware;
+    $('brandSub').textContent =
+      'Personal Intelligence // ' + hw.cpu_count + ' cores // ' +
+      (hw.ram_total_mb / 1024).toFixed(1) + ' GB RAM';
+  }
+  bootLine('All systems nominal');
+  setTimeout(() => {
+    const b = $('boot');
+    if (b) b.classList.add('hide');
+  }, 420);
+}
+
+function applyTelemetry(t) {
+  if (!t) return;
+  const s = t.summary || t;
+  const res = s.resources || {};
+
+  $('mLatency').innerHTML = fmtMs(s.avg_latency_ms);
+  $('mTps').textContent = (s.avg_tokens_per_second || 0).toFixed(1);
+  $('mRequests').textContent = fmtNum(s.requests);
+  $('mTokens').textContent = fmtNum(s.total_tokens);
+
+  $('hdrLatency').textContent = fmtMs(s.avg_latency_ms);
+  $('hdrTps').textContent = (s.avg_tokens_per_second || 0).toFixed(1);
+
+  setBar('Cpu', res.cpu_percent || 0);
+  setBar('Ram', res.ram_percent || 0);
+  setBar('Vram', res.vram_percent || 0);
+
+  if (res.ram_total_mb) {
+    $('hdrRam').textContent = (res.ram_used_mb / 1024).toFixed(1) + 'G';
+  }
+  if (res.vram_total_mb) {
+    $('hdrVram').textContent = (res.vram_used_mb / 1024).toFixed(1) + 'G';
+  }
+
+  applyEnergy(t.energy || s.energy);
+}
+
+/* Energy and FLOPs. Honest about absence: an unknown power draw is
+   reported as unavailable, never as zero. */
+function applyEnergy(e) {
+  const joules = $('mEnergy');
+  const watts = $('mWatts');
+  const flops = $('mFlops');
+  if (!joules) return;
+  if (!e) {
+    joules.innerHTML = '—';
+    watts.innerHTML = '—';
+    flops.textContent = '—';
+    return;
+  }
+  // The summary reports no energy block when no samples exist. That is
+  // an absence, not a zero — report it honestly.
+  const total = e.total_joules;
+  joules.innerHTML = total == null
+    ? '—'
+    : (total >= 1000 ? (total / 1000).toFixed(2) : total.toFixed(1))
+      + '<span class="metric-unit">' + (total >= 1000 ? 'kJ' : 'J') + '</span>';
+  watts.innerHTML = e.avg_watts == null
+    ? '—'
+    : e.avg_watts.toFixed(0) + '<span class="metric-unit">W</span>';
+  flops.textContent = e.total_flops == null ? '—' : fmtFlops(e.total_flops);
+}
+
+function fmtFlops(n) {
+  if (n == null) return '—';
+  if (n >= 1e15) return (n / 1e15).toFixed(2) + ' PF';
+  if (n >= 1e12) return (n / 1e12).toFixed(2) + ' TF';
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + ' GF';
+  return n.toFixed(0);
+}
+
+/* The installed skills catalog. */
+function applySkills(data) {
+  const box = $('skillList');
+  const badge = $('skillBadge');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!data || !data.enabled) {
+    if (badge) badge.textContent = 'off';
+    const off = el('div', 'mem-text', 'Skills are disabled, Boss.');
+    off.style.color = 'var(--carla-text-faint)';
+    box.appendChild(off);
+    return;
+  }
+  const skills = data.skills || [];
+  if (badge) badge.textContent = String(skills.length);
+  if (!skills.length) {
+    const empty = el('div', 'mem-text', 'No skills installed yet.');
+    empty.style.color = 'var(--carla-text-faint)';
+    box.appendChild(empty);
+    return;
+  }
+  skills.slice(0, 10).forEach(function (s) {
+    const name = s.skill ? s.skill.name : s.name;
+    const desc = s.skill ? s.skill.description : (s.description || '');
+    const item = el('div', 'mem-item');
+    item.appendChild(el('div', 'mem-text', name));
+    const meta = el('div', 'mem-meta', (desc || '').slice(0, 92));
+    item.appendChild(meta);
+    box.appendChild(item);
+  });
+}
+
+/* Which learning surfaces are switched on. */
+function applyLearning(data) {
+  const box = $('learnList');
+  const badge = $('learnBadge');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!data) {
+    if (badge) badge.textContent = '—';
+    const off = el('div', 'mem-text', 'Learning state unavailable.');
+    off.style.color = 'var(--carla-text-faint)';
+    box.appendChild(off);
+    return;
+  }
+  const surfaces = data.surfaces || {};
+  if (badge) badge.textContent = data.enabled
+    ? (data.optimizer || 'heuristic')
+    : 'off';
+  // Even when the learning loop is off globally, the per-surface switches
+  // are still worth showing — they are what you edit to turn it on.
+  if (!Object.keys(surfaces).length) {
+    const off = el('div', 'mem-text', 'Learning is disabled, Boss.');
+    off.style.color = 'var(--carla-text-faint)';
+    box.appendChild(off);
+    return;
+  }
+  Object.keys(surfaces).forEach(function (name) {
+    const s = surfaces[name];
+    const item = el('div', 'mem-item');
+    item.appendChild(el('div', 'mem-text', name));
+    const label = s.enabled ? 'enabled' : 'disabled';
+    const meta = el('div', 'mem-meta',
+      (s.policy || 'none') + ' · ' + label);
+    meta.style.color = s.enabled
+      ? 'var(--carla-cyan)' : 'var(--carla-text-faint)';
+    item.appendChild(meta);
+    box.appendChild(item);
+  });
+}
+
+function setBar(name, pct) {
+  const bar = $('bar' + name);
+  const val = $('bar' + name + 'Val');
+  if (!bar) return;
+  const p = Math.max(0, Math.min(100, pct));
+  bar.style.width = p + '%';
+  bar.className = 'bar-fill' + (p > 85 ? ' bad' : (p > 65 ? ' warn' : ''));
+  if (val) val.textContent = p.toFixed(0) + '%';
+}
+
+function applyVoice(v) {
+  if (!v) return;
+  if (v.speaking) {
+    core.setMode('speaking');
+    core.setState('Speaking', 'speaking');
+  } else if (v.listening) {
+    core.setMode('listening');
+    core.setState('Listening', 'listening');
+  } else if (v.waiting_for_wake) {
+    core.setMode('idle');
+    core.setState('Standby · Wake armed', '');
+  } else {
+    core.setMode('idle');
+    core.setState('Standby', '');
+  }
+  if (v.last_transcript) $('coreTranscript').textContent = v.last_transcript;
+  if (v.last_spoken) state.lastSpeech = v.last_spoken;
+
+  const wakeBtn = $('btnWake');
+  if (wakeBtn) {
+    wakeBtn.classList.toggle('primary', !!v.wake_enabled);
+    wakeBtn.textContent = v.wake_enabled ? '👂 Wake ON' : '👂 Wake OFF';
+  }
+}
+
+function renderAgents() {
+  const box = $('agentList');
+  box.innerHTML = '';
+  $('agentCount').textContent = state.agents.length;
+  state.agents.forEach(a => {
+    const item = el('div', 'agent-item' + (a.name === state.activeAgent ? ' active' : ''));
+    item.dataset.agent = a.name;
+
+    item.appendChild(el('span', 'agent-dot'));
+    const meta = el('div', 'agent-meta');
+    meta.appendChild(el('div', 'agent-name', a.name.replace(/_/g, ' ')));
+    meta.appendChild(el('div', 'agent-desc', a.description || ''));
+    item.appendChild(meta);
+    item.appendChild(el('span', 'agent-mode', a.mode || 'on_demand'));
+
+    item.addEventListener('click', () => {
+      state.activeAgent = a.name;
+      renderAgents();
+      toast('Agent → ' + a.name.replace(/_/g, ' '));
+    });
+    box.appendChild(item);
+  });
+}
+
+function setAgentBusy(agent, busy) {
+  const item = document.querySelector('.agent-item[data-agent="' + agent + '"]');
+  if (item) item.classList.toggle('busy', !!busy);
+}
+
+function renderTiers(tiers) {
+  const box = $('tierList');
+  box.innerHTML = '';
+  $('tierBadge').textContent = state.activeTier || '—';
+  tiers.forEach(t => {
+    const item = el('div', 'tier-item' + (t.alias === state.activeTier ? ' active' : ''));
+    item.appendChild(el('span', 'tier-radio'));
+    const meta = el('div', 'tier-meta');
+    meta.appendChild(el('div', 'tier-alias', t.alias));
+    meta.appendChild(el('div', 'tier-model', (t.provider || '') + ' · ' + (t.model || '—')));
+    item.appendChild(meta);
+    item.addEventListener('click', async () => {
+      try {
+        await api('/api/tiers/active', {
+          method: 'POST', body: JSON.stringify({ tier: t.alias }),
+        });
+        state.activeTier = t.alias;
+        $('hdrTier').textContent = t.alias;
+        renderTiers(tiers);
+        toast('Tier → ' + t.alias, 'ok');
+      } catch (e) { toast('Tier switch failed: ' + e.message, 'err'); }
+    });
+    box.appendChild(item);
+  });
+}
+
+function renderTools(tools) {
+  const box = $('toolList');
+  box.innerHTML = '';
+  const byNs = {};
+  tools.forEach(t => { (byNs[t.namespace] = byNs[t.namespace] || []).push(t); });
+  $('toolCount').textContent = tools.length;
+
+  Object.keys(byNs).sort().forEach(ns => {
+    const head = el('div', 'metric-label');
+    head.style.margin = '9px 0 5px';
+    head.textContent = ns;
+    box.appendChild(head);
+    byNs[ns].forEach(t => {
+      const row = el('div', 'mem-item');
+      const txt = el('div', 'mem-text', t.name);
+      txt.style.marginBottom = '2px';
+      txt.style.fontFamily = 'var(--carla-font-mono)';
+      txt.style.fontSize = '10.5px';
+      row.appendChild(txt);
+      const desc = el('div', 'mem-meta', (t.description || '').slice(0, 96));
+      desc.style.lineHeight = '1.4';
+      row.appendChild(desc);
+      if (t.dangerous) {
+        const warn = el('span', 'mem-kind', 'elevated');
+        warn.style.color = 'var(--carla-amber)';
+        desc.appendChild(warn);
+      }
+      box.appendChild(row);
+    });
+  });
+}
+
+function renderJobs(jobs) {
+  const box = $('jobList');
+  box.innerHTML = '';
+  $('jobBadge').textContent = jobs.length;
+  if (!jobs.length) {
+    const empty = el('div', 'mem-text', 'No jobs scheduled, Boss.');
+    empty.style.color = 'var(--carla-text-faint)';
+    box.appendChild(empty);
+    return;
+  }
+  jobs.forEach(j => {
+    const item = el('div', 'job-item');
+    item.appendChild(el('span', 'job-sched', j.schedule));
+    item.appendChild(el('div', 'job-name', j.name));
+    item.appendChild(el('span', 'job-agent', j.agent));
+
+    const run = el('button', 'btn sm ghost', '▶');
+    run.title = 'Run now';
+    run.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      try {
+        await api('/api/jobs/' + j.id + '/run', { method: 'POST' });
+        toast('Job dispatched', 'ok');
+      } catch (err) { toast(err.message, 'err'); }
+    });
+    item.appendChild(run);
+
+    const del = el('button', 'btn sm ghost', '✕');
+    del.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      try {
+        await api('/api/jobs/' + j.id, { method: 'DELETE' });
+        loadJobs();
+        toast('Job removed');
+      } catch (err) { toast(err.message, 'err'); }
+    });
+    item.appendChild(del);
+    box.appendChild(item);
+  });
+}
+
+/* --------------------------------------------------------------------------
+   Chat
+   ------------------------------------------------------------------------ */
+function scrollChat() {
+  const log = $('chatLog');
+  log.scrollTop = log.scrollHeight;
+}
+
+function appendUser(text) {
+  const msg = el('div', 'msg user');
+  msg.appendChild(el('div', 'msg-avatar', 'B'));
+  const body = el('div', 'msg-body');
+  body.appendChild(el('div', 'msg-role', 'Boss'));
+  const t = el('div', 'msg-text');
+  t.innerHTML = '<p>' + escapeHtml(text) + '</p>';
+  body.appendChild(t);
+  msg.appendChild(body);
+  $('chatLog').appendChild(msg);
+  scrollChat();
+}
+
+function appendAssistant(data) {
+  const msg = el('div', 'msg assistant');
+  msg.appendChild(el('div', 'msg-avatar', 'F'));
+  const body = el('div', 'msg-body');
+  body.appendChild(el('div', 'msg-role', 'C.A.R.L.A.'));
+
+  const display = data.display || data.text || '';
+  const speech = data.speech || '';
+
+  const t = el('div', 'msg-text');
+  t.innerHTML = renderMarkdown(display);
+  body.appendChild(t);
+
+  // The speech channel — what C.A.R.L.A. actually vocalised.
+  if (speech && speech !== display) {
+    const chip = el('div', 'speech-chip');
+    chip.appendChild(el('span', 'sc-icon', '🔊'));
+    chip.appendChild(el('span', '', speech));
+    body.appendChild(chip);
+  }
+
+  if (data.tool_calls && data.tool_calls.length) {
+    const strip = el('div', 'tool-strip');
+    data.tool_calls.forEach(tc => {
+      strip.appendChild(el('span', 'tool-pill' + (tc.ok ? ' ok' : ' fail'), tc.name));
+    });
+    body.appendChild(strip);
+  }
+
+  if (data.latency_ms) {
+    const meta = el('div', 'mem-meta');
+    meta.style.marginTop = '7px';
+    meta.textContent =
+      (data.agent || 'agent') + ' · ' + (data.tier || '') + ' · ' +
+      fmtMs(data.latency_ms) +
+      (data.usage && data.usage.total_tokens ? ' · ' + data.usage.total_tokens + ' tok' : '');
+    body.appendChild(meta);
+  }
+
+  msg.appendChild(body);
+  $('chatLog').appendChild(msg);
+  scrollChat();
+
+  state.lastSpeech = speech;
+  state.lastDisplay = display;
+  state.busy = false;
+  $('btnSend').disabled = false;
+  $('btnSend').textContent = 'Send ▸';
+  $('consoleBadge').textContent = 'ready';
+  setAgentBusy(data.agent, false);
+}
+
+async function sendPrompt() {
+  const box = $('prompt');
+  const prompt = box.value.trim();
+  if (!prompt || state.busy) return;
+
+  state.busy = true;
+  $('btnSend').disabled = true;
+  $('btnSend').textContent = 'Working…';
+  $('consoleBadge').textContent = 'processing';
+  box.value = '';
+  box.style.height = 'auto';
+  setAgentBusy(state.activeAgent, true);
+
+  if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+    state.ws.send(JSON.stringify({
+      type: 'chat',
+      prompt: prompt,
+      agent: state.activeAgent,
+      tier: state.activeTier,
+      session_id: state.sessionId,
+    }));
+  } else {
+    try {
+      const result = await api('/api/chat', {
+        method: 'POST',
+        body: JSON.stringify({
+          prompt: prompt, agent: state.activeAgent,
+          tier: state.activeTier, session_id: state.sessionId,
+        }),
+      });
+      appendUser(prompt);
+      appendAssistant(result);
+    } catch (e) {
+      toast('Request failed: ' + e.message, 'err');
+      state.busy = false;
+      $('btnSend').disabled = false;
+      $('btnSend').textContent = 'Send ▸';
+    }
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Loaders
+   ------------------------------------------------------------------------ */
+async function loadTiers() {
+  try {
+    const data = await api('/api/tiers');
+    state.activeTier = data.active;
+    state.tiers = data.tiers;
+    renderTiers(data.tiers);
+  } catch (e) { /* noop */ }
+}
+
+async function loadJobs() {
+  try {
+    const data = await api('/api/jobs');
+    renderJobs(data.jobs);
+    populateAgentSelect();
+  } catch (e) { /* noop */ }
+}
+
+async function loadMemory(query) {
+  try {
+    const url = query
+      ? '/api/memory?q=' + encodeURIComponent(query) + '&limit=30'
+      : '/api/memory?limit=30';
+    const data = await api(url);
+    const box = $('memList');
+    box.innerHTML = '';
+    $('memBadge').textContent = ((data.stats && data.stats.memories) || 0) + ' stored';
+    if (!data.memories.length) {
+      const empty = el('div', 'mem-text', 'Nothing in the vault yet, Boss.');
+      empty.style.color = 'var(--carla-text-faint)';
+      box.appendChild(empty);
+      return;
+    }
+    data.memories.forEach(m => {
+      const item = el('div', 'mem-item');
+      item.appendChild(el('div', 'mem-text', m.content));
+      const meta = el('div', 'mem-meta');
+      meta.appendChild(el('span', 'mem-kind', m.kind));
+      meta.appendChild(el('span', '', m.score ? 'score ' + m.score.toFixed(2) : ''));
+      const del = el('button', 'mem-del', '×');
+      del.title = 'Delete';
+      del.addEventListener('click', async () => {
+        try {
+          await api('/api/memory/' + m.id, { method: 'DELETE' });
+          loadMemory();
+          toast('Memory purged');
+        } catch (e) { toast(e.message, 'err'); }
+      });
+      meta.appendChild(del);
+      item.appendChild(meta);
+      box.appendChild(item);
+    });
+  } catch (e) { /* noop */ }
+}
+
+function populateAgentSelect() {
+  const sel = $('jobAgent');
+  if (sel.options.length) return;
+  state.agents.forEach(a => {
+    const o = document.createElement('option');
+    o.value = a.name;
+    o.textContent = a.name.replace(/_/g, ' ');
+    sel.appendChild(o);
+  });
+}
+
+/* --------------------------------------------------------------------------
+   Settings editor
+   ------------------------------------------------------------------------ */
+async function openEditor() {
+  try {
+    const data = await api('/api/config');
+    $('editorText').value = data.toml || '# Empty configuration.';
+    $('editorPath').textContent = data.path;
+    $('editor').classList.add('open');
+    $('editorStatus').className = 'editor-status';
+    $('editorStatus').textContent =
+      'Loaded ' + (data.toml || '').split('\n').length + ' lines.';
+  } catch (e) {
+    toast('Could not load config: ' + e.message, 'err');
+  }
+}
+
+async function saveEditor() {
+  const status = $('editorStatus');
+  status.className = 'editor-status';
+  status.textContent = 'Saving…';
+  try {
+    await api('/api/config', {
+      method: 'PUT', body: JSON.stringify({ toml: $('editorText').value }),
+    });
+    status.className = 'editor-status ok';
+    status.textContent = 'Saved. Reloading runtime…';
+    await api('/api/config/reload', { method: 'POST' });
+    toast('Configuration saved', 'ok');
+    setTimeout(() => {
+      $('editor').classList.remove('open');
+      status.textContent = 'Ready.';
+    }, 900);
+  } catch (e) {
+    status.className = 'editor-status err';
+    status.textContent = 'Error: ' + e.message;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Wiring
+   ------------------------------------------------------------------------ */
+function wire() {
+  $('btnSend').addEventListener('click', sendPrompt);
+
+  $('prompt').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendPrompt();
+    }
+  });
+  $('prompt').addEventListener('input', (e) => {
+    e.target.style.height = 'auto';
+    e.target.style.height = Math.min(e.target.scrollHeight, 170) + 'px';
+  });
+
+  $('btnClear').addEventListener('click', () => {
+    $('chatLog').innerHTML = '';
+    toast('Console cleared');
+  });
+
+  $('btnMic').addEventListener('click', async () => {
+    state.micOn = !state.micOn;
+    try {
+      const data = await api('/api/voice/listen', { method: 'POST' });
+      if (data.text) {
+        $('prompt').value = data.text;
+        core.setMode('listening');
+        core.setState('Listening', 'listening');
+        setTimeout(() => { core.setMode('idle'); core.setState('Standby', ''); }, 1400);
+        toast('Heard: "' + data.text.slice(0, 48) + '"', 'ok');
+      } else {
+        toast('Nothing picked up, Boss.');
+      }
+    } catch (e) { toast('Listen failed: ' + e.message, 'err'); }
+  });
+
+  $('btnSpeak').addEventListener('click', async () => {
+    const text = state.lastSpeech || state.lastDisplay;
+    if (!text) { toast('Nothing to say yet, Boss.'); return; }
+    try {
+      await api('/api/voice/speak', { method: 'POST', body: JSON.stringify({ text }) });
+      core.setMode('speaking');
+      core.setState('Speaking', 'speaking');
+      setTimeout(() => { core.setMode('idle'); core.setState('Standby', ''); }, 2600);
+    } catch (e) { toast('Speak failed: ' + e.message, 'err'); }
+  });
+
+  $('btnStop').addEventListener('click', () => {
+    core.setMode('idle');
+    core.setState('Standby', '');
+    toast('Halted.');
+  });
+
+  $('btnWake').addEventListener('click', () => {
+    toast('Wake word state is managed in psycho_carla.toml');
+  });
+
+  $('memSearch').addEventListener('input', (e) => {
+    const v = e.target.value;
+    clearTimeout(window._memTimer);
+    window._memTimer = setTimeout(() => loadMemory(v.trim()), 320);
+  });
+  $('btnMemRefresh').addEventListener('click', () => loadMemory());
+  $('btnMemAdd').addEventListener('click', async () => {
+    const content = prompt('Memory content to store:');
+    if (!content) return;
+    try {
+      await api('/api/memory', { method: 'POST', body: JSON.stringify({ content }) });
+      loadMemory();
+      toast('Stored in the vault', 'ok');
+    } catch (e) { toast(e.message, 'err'); }
+  });
+
+  $('btnJobAdd').addEventListener('click', async () => {
+    const name = $('jobName').value.trim();
+    const schedule = $('jobSchedule').value.trim();
+    const agent = $('jobAgent').value;
+    if (!name || !schedule) { toast('Name and schedule required, Boss.', 'err'); return; }
+    try {
+      await api('/api/jobs', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: name, schedule: schedule, agent: agent,
+          prompt: 'Run the ' + name + ' scheduled task.',
+        }),
+      });
+      $('jobName').value = '';
+      loadJobs();
+      toast('Job scheduled', 'ok');
+    } catch (e) { toast(e.message, 'err'); }
+  });
+
+  $('btnSettings').addEventListener('click', openEditor);
+  $('btnEditorSave').addEventListener('click', saveEditor);
+  $('btnEditorClose').addEventListener('click', () => $('editor').classList.remove('open'));
+  $('btnEditorReload').addEventListener('click', openEditor);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') $('editor').classList.remove('open');
+    if (e.ctrlKey && e.key === '/') { e.preventDefault(); openEditor(); }
+  });
+}
+
+/* --------------------------------------------------------------------------
+   Boot
+   ------------------------------------------------------------------------ */
+async function boot() {
+  core.start();
+  wire();
+  connectWS();
+  try {
+    const snap = await api('/api/status');
+    applySnapshot(snap);
+  } catch (e) {
+    bootLine('Runtime unavailable');
+    setTimeout(() => {
+      const b = $('boot');
+      if (b) b.classList.add('hide');
+    }, 900);
+  }
+  loadTiers();
+  loadJobs();
+  loadMemory();
+  loadSkills();
+  loadLearning();
+  loadModelsLocal();
+  loadChannels();
+  setInterval(() => {
+    fetch('/api/telemetry')
+      .then(r => r.json())
+      .then(d => applyTelemetry(d))
+      .catch(() => {});
+  }, 3000);
+}
+
+/* The skills catalog and the learning surfaces. Both are slow-moving,
+   so they are fetched once at boot rather than polled. */
+async function loadSkills() {
+  try {
+    const d = await api('/api/skills');
+    applySkills(d);
+  } catch (e) { applySkills(null); }
+}
+
+async function loadLearning() {
+  try {
+    const d = await api('/api/learning/surfaces');
+    applyLearning(d);
+  } catch (e) { applyLearning(null); }
+}
+
+/* The connected messaging channels. */
+function applyChannels(data) {
+  const box = $('chanList');
+  const badge = $('chanBadge');
+  if (!box) return;
+  box.innerHTML = '';
+  const channels = (data && data.channels) || [];
+  if (badge) badge.textContent = data && data.status ? data.status : '—';
+
+  if (!channels.length) {
+    const empty = el('div', 'mem-text', 'No channels configured.');
+    empty.style.color = 'var(--carla-text-faint)';
+    box.appendChild(empty);
+    return;
+  }
+
+  channels.forEach(function (c) {
+    const item = el('div', 'mem-item');
+    const row = el('div', 'mem-row');
+    row.appendChild(el('span', 'mem-text', c.channel_id));
+
+    const status = el('span', 'mem-meta', c.status);
+    if (c.status === 'connected') status.style.color = 'var(--carla-cyan)';
+    else if (c.status === 'error') status.style.color = 'var(--carla-red, #ff6b6b)';
+    row.appendChild(status);
+
+    item.appendChild(row);
+    if (c.missing && c.missing.length) {
+      const note = el('div', 'mem-meta', 'needs: ' + c.missing.join(', '));
+      note.style.color = 'var(--carla-text-faint)';
+      item.appendChild(note);
+    }
+    box.appendChild(item);
+  });
+}
+
+async function loadChannels() {
+  try {
+    const d = await api('/api/channels');
+    applyChannels(d);
+  } catch (e) {
+    applyChannels(null);
+  }
+}
+
+async function loadModelsLocal() {
+  try {
+    const d = await api('/api/models/local');
+    applyModelsLocal(d);
+  } catch (e) { applyModelsLocal(null); }
+}
+
+/* --------------------------------------------------------------------------
+   Model Manager — browse the catalog and download models without a terminal.
+   ------------------------------------------------------------------------ */
+
+/* The compact panel in the sidebar. */
+function applyModelsLocal(data) {
+  const box = $('modelList');
+  const badge = $('modelBadge');
+  if (!box) return;
+  box.innerHTML = '';
+  const models = (data && data.models) || [];
+  if (badge) badge.textContent = String(models.length);
+  if (!models.length) {
+    const empty = el('div', 'mem-text', 'No models downloaded yet.');
+    empty.style.color = 'var(--carla-text-faint)';
+    box.appendChild(empty);
+    return;
+  }
+  models.slice(0, 6).forEach(function (m) {
+    const item = el('div', 'mem-item');
+    const row = el('div', 'mem-row');
+    row.appendChild(el('span', 'mem-text', m.model_id));
+    row.appendChild(el('span', 'mem-meta', (m.size_gb || 0).toFixed(1) + ' GB'));
+    item.appendChild(row);
+    box.appendChild(item);
+  });
+}
+
+/* The modal: catalog + installed models. */
+function mmRenderCatalog(data, engine) {
+  const box = $('mmCatalog');
+  if (!box) return;
+  box.innerHTML = '';
+  const models = (data && data.models) || [];
+  if (!models.length) {
+    const empty = el('div', 'mem-text', 'No catalogued models for that engine.');
+    empty.style.color = 'var(--carla-text-faint)';
+    box.appendChild(empty);
+    return;
+  }
+  models.forEach(function (m) {
+    const item = el('div', 'mem-item');
+    const row = el('div', 'mem-row');
+    row.appendChild(el('span', 'mem-text', m.model_id));
+    const right = el('span', 'mem-meta');
+    const ram = m.ram_gb ? m.ram_gb + ' GB ram' : '';
+    const dl = m.size_gb ? m.size_gb + ' GB dl' : '';
+    right.textContent = [ram, dl].filter(Boolean).join(' · ');
+    row.appendChild(right);
+    item.appendChild(row);
+    if (m.description) {
+      const d = el('div', 'mem-meta', m.description);
+      item.appendChild(d);
+    }
+    if (engine === 'ollama' || engine === 'llamacpp') {
+      const btn = el('button', 'btn sm', 'Download');
+      btn.style.marginTop = '6px';
+      btn.onclick = function () { mmPull(m.model_id, engine, btn); };
+      item.appendChild(btn);
+    }
+    box.appendChild(item);
+  });
+}
+
+function mmRenderLocal(data) {
+  const box = $('mmLocal');
+  if (!box) return;
+  box.innerHTML = '';
+  const models = (data && data.models) || [];
+  if (!models.length) {
+    const empty = el('div', 'mem-text', 'Nothing installed yet.');
+    empty.style.color = 'var(--carla-text-faint)';
+    box.appendChild(empty);
+    return;
+  }
+  models.forEach(function (m) {
+    const item = el('div', 'mem-item');
+    const row = el('div', 'mem-row');
+    row.appendChild(el('span', 'mem-text', m.model_id));
+    row.appendChild(el('span', 'mem-meta', m.engine + ' · ' +
+      (m.size_gb || 0).toFixed(1) + ' GB'));
+    item.appendChild(row);
+    box.appendChild(item);
+  });
+}
+
+async function mmPull(modelId, engine, btn) {
+  const status = $('mmStatus');
+  if (btn) { btn.disabled = true; btn.textContent = 'Downloading…'; }
+  if (status) status.textContent = 'Pulling ' + modelId + '…';
+  try {
+    const res = await api('/api/models/pull', {
+      method: 'POST',
+      body: JSON.stringify({ model_id: modelId, engine: engine }),
+    });
+    if (status) {
+      status.textContent = res.ok ? '✓ ' + (res.message || 'done')
+                                  : '✗ ' + (res.message || 'failed');
+      status.style.color = res.ok ? 'var(--carla-cyan)' : 'var(--carla-amber)';
+    }
+  } catch (e) {
+    if (status) {
+      status.textContent = '✗ ' + (e.message || 'failed');
+      status.style.color = 'var(--carla-amber)';
+    }
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Download'; }
+  mmRefreshLocal();
+}
+
+async function mmRefreshLocal() {
+  try {
+    const d = await api('/api/models/local');
+    mmRenderLocal(d);
+    applyModelsLocal(d);
+  } catch (e) { /* noop */ }
+}
+
+async function mmRefreshCatalog() {
+  const engine = ($('mmEngine') || {}).value || 'ollama';
+  const status = $('mmStatus');
+  if (status) status.textContent = 'Loading catalog…';
+  try {
+    const d = await api('/api/models?engine=' + encodeURIComponent(engine));
+    mmRenderCatalog(d, engine);
+    if (status) { status.textContent = ''; }
+  } catch (e) {
+    if (status) status.textContent = '✗ ' + (e.message || 'failed');
+  }
+  try {
+    const rec = await api('/api/models/recommend');
+    const hw = $('mmHw');
+    if (hw) {
+      hw.textContent = rec.ram_gb + ' GB RAM · ' +
+        rec.disk_free_gb + ' GB free';
+    }
+  } catch (e) { /* noop */ }
+}
+
+function mmOpen() {
+  const wrap = $('modelMgr');
+  if (!wrap) return;
+  wrap.classList.add('open');
+  mmRefreshCatalog();
+  mmRefreshLocal();
+}
+
+function mmClose() {
+  const wrap = $('modelMgr');
+  if (wrap) wrap.classList.remove('open');
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  const btn = $('btnModels');
+  if (btn) btn.onclick = mmOpen;
+  const close = $('mmClose');
+  if (close) close.onclick = mmClose;
+  const refresh = $('mmRefresh');
+  if (refresh) refresh.onclick = mmRefreshCatalog;
+  const engine = $('mmEngine');
+  if (engine) engine.onchange = mmRefreshCatalog;
+});
+
+document.addEventListener('DOMContentLoaded', boot);
+
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Bundled skill: daily-digest (ported from upstream)
+
+[[steps]]
+tool = "memory_search"
+arguments = '{"query": "recent activity updates {date}"}'
+output = "recent_items"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Categorize the retrieved items into groups: tasks completed, pending items, important updates, and upcoming deadlines: {recent_items}"}'
+output = "categorized"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Generate a concise daily digest with sections: Highlights, Completed Tasks, Pending Items, Upcoming Deadlines, and Notes: {categorized}"}'
+output = "digest"

@@ -1,0 +1,30 @@
+[recipe]
+name = "coding-assistant"
+description = "File, shell and code tooling for engineering work"
+version = "0.1.0"
+kind = "discrete"
+
+[intelligence]
+model = ""
+provider = ""
+
+[engine]
+key = ""
+
+[agent]
+type = "orchestrator"
+max_turns = 20
+temperature = 0.2
+tools = ["file_read", "file_write", "file_search", "shell_exec", "code_execute"]
+system_prompt = """
+You are a precise coding assistant. Read the code before you change it.
+Make the smallest change that solves the problem, then say what you changed
+and why. Quote real file paths and line numbers, never invent them.
+"""
+
+[learning]
+routing = "heuristic"
+agent = "none"
+
+[eval]
+suites = ["coding"]

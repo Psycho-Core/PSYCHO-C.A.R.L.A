@@ -1,0 +1,16 @@
+# Bundled skill: web-summarize (ported from upstream)
+
+[[steps]]
+tool = "http_request"
+arguments = '{"url": "{url}"}'
+output = "page_content"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Extract the main content from the web page, ignoring navigation and ads: {page_content}"}'
+output = "clean_content"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Summarize the content into 5-7 key bullet points: {clean_content}"}'
+output = "summary"

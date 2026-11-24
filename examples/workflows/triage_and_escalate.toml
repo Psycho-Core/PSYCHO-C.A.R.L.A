@@ -1,0 +1,48 @@
+# PSYCHO-C.A.R.L.A. — example workflow
+#
+# A parallel fan-out with a conditional branch: two analysts work at once,
+# and a condition decides whether the result is escalated.
+#
+# Run it with:  carla workflow run examples/workflows/triage_and_escalate.toml
+
+[workflow]
+name = "triage_and_escalate"
+
+# --- two analysts, in parallel ------------------------------------------------
+[[workflow.nodes]]
+id = "fanout"
+type = "parallel"
+children = ["risk", "cost"]
+
+[[workflow.nodes]]
+id = "risk"
+type = "agent"
+agent = "orchestrator"
+prompt = "List the top risks in: {input}"
+
+[[workflow.nodes]]
+id = "cost"
+type = "agent"
+agent = "orchestrator"
+prompt = "List the top costs in: {input}"
+
+# --- decision ----------------------------------------------------------------
+[[workflow.nodes]]
+id = "decision"
+type = "condition"
+condition_expr = "risk != ''"
+
+# --- final write-up ----------------------------------------------------------
+[[workflow.nodes]]
+id = "report"
+type = "agent"
+agent = "orchestrator"
+prompt = "Write a one-paragraph assessment from these findings:\n\n{fanout}"
+
+[[workflow.edges]]
+source = "fanout"
+target = "decision"
+
+[[workflow.edges]]
+source = "decision"
+target = "report"

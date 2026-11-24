@@ -1,0 +1,16 @@
+# Bundled skill: file-deduplicator (ported from upstream)
+
+[[steps]]
+tool = "shell_exec"
+arguments = '{"command": "find {directory} -type f -exec md5sum {} \\; | sort"}'
+output = "checksums"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Identify duplicate files from the checksums. Group files with identical hashes: {checksums}"}'
+output = "duplicates"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Generate a report listing all duplicate file groups and total space that could be reclaimed: {duplicates}"}'
+output = "report"

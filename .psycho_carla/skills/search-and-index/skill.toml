@@ -1,0 +1,21 @@
+# Bundled skill: search-and-index (ported from upstream)
+
+[[steps]]
+tool = "shell_exec"
+arguments = '{"command": "find {directory} -type f \\( -name \"*.txt\" -o -name \"*.md\" -o -name \"*.pdf\" \\) | head -50"}'
+output = "found_files"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Filter the found files to those likely relevant to the query: {query}. Files: {found_files}"}'
+output = "relevant_files"
+
+[[steps]]
+tool = "memory_index"
+arguments = '{"path": "{directory}"}'
+output = "index_result"
+
+[[steps]]
+tool = "memory_search"
+arguments = '{"query": "{query}"}'
+output = "search_results"

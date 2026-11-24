@@ -1,0 +1,52 @@
+# PSYCHO-C.A.R.L.A. — preset: code-assistant
+#
+# A coding-focused setup: file and shell tools, the code-reviewer agent,
+# and the skills catalog enabled so project skills load on demand.
+#
+#   carla init --preset code-assistant
+
+[preset]
+name = "code-assistant"
+description = "Coding assistant with file, shell and review tooling"
+
+[server]
+host = "127.0.0.1"
+port = 8787
+require_auth = false
+
+[memory]
+enabled = true
+recall_limit = 8
+
+[telemetry]
+enabled = true
+gpu_metrics = true
+energy_vendor = "auto"
+
+[voice]
+enabled = true
+tts_engine = "piper"
+tts_voice = "en_GB-cori-high"
+barge_in = true
+
+[skills]
+enabled = true
+
+[agents]
+default = "orchestrator"
+
+[agents.code_assistant]
+type = "orchestrator"
+max_turns = 24
+temperature = 0.2
+tools = ["file_read", "file_write", "file_search", "shell", "code_search"]
+
+[agents.code_reviewer]
+type = "critic"
+max_turns = 10
+temperature = 0.1
+tools = ["file_read", "file_search", "code_search"]
+system_prompt_extra = """
+Review for correctness first, then security, then clarity. Quote the exact
+line for every finding. Say plainly when the code is fine.
+"""

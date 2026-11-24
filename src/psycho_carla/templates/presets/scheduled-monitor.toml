@@ -1,0 +1,53 @@
+# PSYCHO-C.A.R.L.A. — preset: scheduled-monitor
+#
+# Watch services and report: cron jobs that check things on a schedule and
+# only speak up when something changes.
+#
+#   carla init --preset scheduled-monitor
+
+[preset]
+name = "scheduled-monitor"
+description = "Watch services on a schedule and report only on change"
+
+[server]
+host = "127.0.0.1"
+port = 8787
+require_auth = false
+
+[memory]
+enabled = true
+recall_limit = 6
+
+[telemetry]
+enabled = true
+gpu_metrics = true
+energy_vendor = "auto"
+
+[voice]
+enabled = true
+tts_engine = "piper"
+tts_voice = "en_GB-alan-medium"
+barge_in = true
+
+[agents]
+default = "orchestrator"
+
+[agents.monitor]
+type = "scheduler"
+max_turns = 8
+temperature = 0.2
+tools = ["shell", "web_search", "memory_search"]
+
+
+
+[[cron]]
+name = "health-check"
+schedule = "*/15 * * * *"
+agent = "monitor"
+prompt = "Check the configured services. Report only what changed since the last run."
+
+[[cron]]
+name = "daily-summary"
+schedule = "0 18 * * *"
+agent = "monitor"
+prompt = "Summarise today's monitoring output: what broke, what recovered, what needs a human."

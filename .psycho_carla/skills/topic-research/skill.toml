@@ -1,0 +1,21 @@
+# Bundled skill: topic-research (ported from upstream)
+
+[[steps]]
+tool = "memory_search"
+arguments = '{"query": "{topic}"}'
+output = "prior_knowledge"
+
+[[steps]]
+tool = "web_search"
+arguments = '{"query": "{topic}"}'
+output = "search_results"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Synthesize a comprehensive research summary combining prior knowledge and new findings. Prior: {prior_knowledge}. New: {search_results}"}'
+output = "synthesis"
+
+[[steps]]
+tool = "memory_store"
+arguments = '{"content": "{synthesis}", "metadata": "topic_research:{topic}"}'
+output = "stored"

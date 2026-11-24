@@ -1,0 +1,21 @@
+# Bundled skill: file-organizer (ported from upstream)
+
+[[steps]]
+tool = "shell_exec"
+arguments = '{"command": "find {directory} -maxdepth 1 -type f -exec file --mime-type {} \\;"}'
+output = "file_listing"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Analyze the file types and group them into categories (images, documents, code, archives, media, other): {file_listing}"}'
+output = "organization_plan"
+
+[[steps]]
+tool = "shell_exec"
+arguments = '{"command": "mkdir -p {directory}/images {directory}/documents {directory}/code {directory}/archives {directory}/media {directory}/other"}'
+output = "dirs_created"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Generate a summary report of the file organization plan: {organization_plan}"}'
+output = "report"

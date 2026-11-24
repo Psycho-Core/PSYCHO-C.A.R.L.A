@@ -1,0 +1,16 @@
+# Bundled skill: email-draft (ported from upstream)
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Analyze the email context and determine the appropriate tone, key points to address, and desired outcome. Context: {context}. Intent: {intent}"}'
+output = "analysis"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Draft a professional email with proper greeting, body paragraphs addressing each key point, and appropriate closing. Analysis: {analysis}. Recipient: {recipient}"}'
+output = "draft"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Review the draft for clarity, tone, grammar, and completeness. Suggest improvements if needed: {draft}"}'
+output = "final_draft"

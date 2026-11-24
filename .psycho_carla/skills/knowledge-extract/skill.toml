@@ -1,0 +1,16 @@
+# Bundled skill: knowledge-extract (ported from upstream)
+
+[[steps]]
+tool = "file_read"
+arguments = '{"path": "{file_path}"}'
+output = "document_content"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Extract key facts, entities, relationships, and concepts from the document: {document_content}"}'
+output = "extracted_knowledge"
+
+[[steps]]
+tool = "memory_store"
+arguments = '{"content": "{extracted_knowledge}", "metadata": "knowledge_extract:{file_path}"}'
+output = "stored"

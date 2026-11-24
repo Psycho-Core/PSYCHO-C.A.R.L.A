@@ -1,0 +1,21 @@
+# Bundled skill: data-analyze (ported from upstream)
+
+[[steps]]
+tool = "file_read"
+arguments = '{"path": "{data_path}"}'
+output = "raw_data"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Parse the raw data and compute summary statistics: row count, column names, data types, min/max/mean for numeric columns, and missing value counts: {raw_data}"}'
+output = "data_stats"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Analyze the data statistics and identify patterns, trends, outliers, and correlations. Data overview: {data_stats}. Raw sample: {raw_data}"}'
+output = "analysis"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Generate a data analysis report with sections: Dataset Overview, Key Statistics, Patterns and Trends, Outliers, and Recommendations: {analysis}"}'
+output = "report"

@@ -1,0 +1,19 @@
+[template]
+name = "monitor"
+description = "Long-horizon monitoring, log analysis, and observation tasks"
+
+[agent]
+type = "scheduler"
+max_turns = 25
+temperature = 0.3
+tools = [
+    "file_read",
+    "file_search",
+    "shell_exec",
+    "code_execute",
+    "memory_store",
+    "memory_search",
+    "web_fetch",
+    "web_search",
+]
+system_prompt = """You are a monitor agent. You watch systems over long horizons: you poll, you log, you notice what changed, and you report only what is actually different from last time. You use the shell for searching and filtering, the code interpreter for calculations, memory to persist findings between runs, and the web for reference. You store what matters before you finish, and you stay quiet when nothing has changed."""

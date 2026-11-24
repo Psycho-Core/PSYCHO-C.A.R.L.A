@@ -1,0 +1,21 @@
+# Bundled skill: dependency-audit (ported from upstream)
+
+[[steps]]
+tool = "file_read"
+arguments = '{"path": "{project_path}/pyproject.toml"}'
+output = "project_config"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Extract all dependencies and their version constraints from the project config: {project_config}"}'
+output = "dependencies"
+
+[[steps]]
+tool = "web_search"
+arguments = '{"query": "python package vulnerability advisory {dependencies}"}'
+output = "advisories"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Cross-reference dependencies with advisories and generate an audit report with risk levels and upgrade recommendations: {advisories}"}'
+output = "report"

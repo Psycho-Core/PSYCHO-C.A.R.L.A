@@ -1,0 +1,16 @@
+# Bundled skill: code-lint (ported from upstream)
+
+[[steps]]
+tool = "file_read"
+arguments = '{"path": "{file_path}"}'
+output = "source_code"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Analyze the code for quality issues: style violations, potential bugs, unused variables, missing error handling, code smells, and complexity problems: {source_code}"}'
+output = "issues"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Format the findings as a structured lint report with severity levels (error, warning, info) and line references: {issues}"}'
+output = "report"

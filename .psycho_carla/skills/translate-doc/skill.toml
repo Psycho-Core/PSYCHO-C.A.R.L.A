@@ -1,0 +1,21 @@
+# Bundled skill: translate-doc (ported from upstream)
+
+[[steps]]
+tool = "file_read"
+arguments = '{"path": "{file_path}"}'
+output = "original_content"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Detect the source language and analyze the document structure, formatting, and any specialized terminology: {original_content}"}'
+output = "analysis"
+
+[[steps]]
+tool = "llm_generate"
+arguments = '{"prompt": "Translate the following text to {target_language}, preserving all formatting, technical terms, and document structure: {original_content}"}'
+output = "translation"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Review the translation for accuracy, natural phrasing, and formatting preservation. Note any terms that may need human review: {translation}"}'
+output = "reviewed_translation"

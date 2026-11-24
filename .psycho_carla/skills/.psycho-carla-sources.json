@@ -1,0 +1,25 @@
+{
+  "bundled_installed": [
+    "backup-files",
+    "calendar-prep",
+    "code-lint",
+    "code-test-gen",
+    "compare-docs",
+    "daily-digest",
+    "data-analyze",
+    "dependency-audit",
+    "email-draft",
+    "file-deduplicator",
+    "file-organizer",
+    "knowledge-extract",
+    "meeting-notes",
+    "pdf-summarize",
+    "search-and-index",
+    "security-scan",
+    "todo-from-notes",
+    "topic-research",
+    "translate-doc",
+    "web-summarize"
+  ],
+  "updated_at": 1794758545.9236465
+}

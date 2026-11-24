@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "updated_at": 1794758545.9234805,
+  "skills": {
+    "backup-files": {
+      "kind": "local",
+      "location": "bundled:backup-files",
+      "ref": "",
+      "installed_at": 1794758545.916187
+    },
+    "calendar-prep": {
+      "kind": "local",
+      "location": "bundled:calendar-prep",
+      "ref": "",
+      "installed_at": 1794758545.916466
+    },
+    "code-lint": {
+      "kind": "local",
+      "location": "bundled:code-lint",
+      "ref": "",
+      "installed_at": 1794758545.9169104
+    },
+    "code-test-gen": {
+      "kind": "local",
+      "location": "bundled:code-test-gen",
+      "ref": "",
+      "installed_at": 1794758545.917389
+    },
+    "compare-docs": {
+      "kind": "local",
+      "location": "bundled:compare-docs",
+      "ref": "",
+      "installed_at": 1794758545.9177747
+    },
+    "daily-digest": {
+      "kind": "local",
+      "location": "bundled:daily-digest",
+      "ref": "",
+      "installed_at": 1794758545.9181187
+    },
+    "data-analyze": {
+      "kind": "local",
+      "location": "bundled:data-analyze",
+      "ref": "",
+      "installed_at": 1794758545.9185057
+    },
+    "dependency-audit": {
+      "kind": "local",
+      "location": "bundled:dependency-audit",
+      "ref": "",
+      "installed_at": 1794758545.918853
+    },
+    "email-draft": {
+      "kind": "local",
+      "location": "bundled:email-draft",
+      "ref": "",
+      "installed_at": 1794758545.9191954
+    },
+    "file-deduplicator": {
+      "kind": "local",
+      "location": "bundled:file-deduplicator",
+      "ref": "",
+      "installed_at": 1794758545.9195733
+    },
+    "file-organizer": {
+      "kind": "local",
+      "location": "bundled:file-organizer",
+      "ref": "",
+      "installed_at": 1794758545.9199672
+    },
+    "knowledge-extract": {
+      "kind": "local",
+      "location": "bundled:knowledge-extract",
+      "ref": "",
+      "installed_at": 1794758545.9203498
+    },
+    "meeting-notes": {
+      "kind": "local",
+      "location": "bundled:meeting-notes",
+      "ref": "",
+      "installed_at": 1794758545.9207234
+    },
+    "pdf-summarize": {
+      "kind": "local",
+      "location": "bundled:pdf-summarize",
+      "ref": "",
+      "installed_at": 1794758545.9212205
+    },
+    "search-and-index": {
+      "kind": "local",
+      "location": "bundled:search-and-index",
+      "ref": "",
+      "installed_at": 1794758545.9216235
+    },
+    "security-scan": {
+      "kind": "local",
+      "location": "bundled:security-scan",
+      "ref": "",
+      "installed_at": 1794758545.9219837
+    },
+    "todo-from-notes": {
+      "kind": "local",
+      "location": "bundled:todo-from-notes",
+      "ref": "",
+      "installed_at": 1794758545.922369
+    },
+    "topic-research": {
+      "kind": "local",
+      "location": "bundled:topic-research",
+      "ref": "",
+      "installed_at": 1794758545.9227376
+    },
+    "translate-doc": {
+      "kind": "local",
+      "location": "bundled:translate-doc",
+      "ref": "",
+      "installed_at": 1794758545.923098
+    },
+    "web-summarize": {
+      "kind": "local",
+      "location": "bundled:web-summarize",
+      "ref": "",
+      "installed_at": 1794758545.9234798
+    }
+  }
+}

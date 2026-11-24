@@ -1,0 +1,33 @@
+# Psycho-F.R.I.D.A.Y.
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.env
+
+# Runtime state
+/data/
+/.psycho_carla/data/
+models/
+*.db
+*.db-wal
+*.db-shm
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# --- Machine state that must never live in the workspace ---------------------
+.npm/
+.model_cache/
+model_cache/
+.espeak/

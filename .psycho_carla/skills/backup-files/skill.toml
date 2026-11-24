@@ -1,0 +1,16 @@
+# Bundled skill: backup-files (ported from upstream)
+
+[[steps]]
+tool = "shell_exec"
+arguments = '{"command": "date +%Y%m%d_%H%M%S"}'
+output = "timestamp"
+
+[[steps]]
+tool = "shell_exec"
+arguments = '{"command": "tar czf {destination}/backup_{timestamp}.tar.gz -C {source} ."}'
+output = "archive_result"
+
+[[steps]]
+tool = "think"
+arguments = '{"thought": "Verify the backup was created successfully and summarize: {archive_result}"}'
+output = "report"

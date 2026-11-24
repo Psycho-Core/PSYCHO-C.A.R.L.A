@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSYCHO-C.A.R.L.A. — Command Console</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/carla.css">
+</head>
+<body>
+
+<!-- ====================== BOOT OVERLAY ====================== -->
+<div class="boot" id="boot">
+  <div class="boot-inner">
+    <div class="boot-logo">C.A.R.L.A.</div>
+    <div class="boot-line" id="bootLine">Initialising systems</div>
+    <div class="boot-bar"><span></span></div>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- ====================== HEADER ====================== -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24"><path d="M12 2 L21 7 v10 L12 22 L3 17 V7 Z"/><circle cx="12" cy="12" r="3.2"/></svg>
+      </div>
+      <div class="brand-text">
+        <div class="brand-title">PSYCHO-C.A.R.L.A.</div>
+        <div class="brand-sub" id="brandSub">Personal Intelligence // Local-First</div>
+      </div>
+    </div>
+
+    <div class="header-spacer"></div>
+
+    <div class="header-stats">
+      <div class="hstat">
+        <span class="hstat-label">Tier</span>
+        <span class="hstat-value" id="hdrTier">—</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-label">Latency</span>
+        <span class="hstat-value" id="hdrLatency">—</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-label">Tok/s</span>
+        <span class="hstat-value" id="hdrTps">—</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-label">RAM</span>
+        <span class="hstat-value" id="hdrRam">—</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-label">VRAM</span>
+        <span class="hstat-value" id="hdrVram">—</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-label">Link</span>
+        <span class="hstat-value" id="hdrLink">—</span>
+      </div>
+    </div>
+
+    <button class="btn ghost sm" id="btnSettings" title="Edit psycho_carla.toml">⚙ Config</button>
+  </header>
+
+  <!-- ====================== MAIN ====================== -->
+  <div class="main">
+
+    <!-- ---------- LEFT COLUMN ---------- -->
+    <div class="column">
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Agents</span>
+          <span class="panel-badge" id="agentCount">8</span>
+        </div>
+        <div class="panel-body" id="agentList"></div>
+      </section>
+
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Capability Tiers</span>
+          <span class="panel-badge" id="tierBadge">—</span>
+        </div>
+        <div class="panel-body" id="tierList"></div>
+      </section>
+
+      <section class="panel" style="flex: 1 1 auto; min-height: 140px;">
+        <div class="panel-head">
+          <span class="panel-title">Tool Matrix</span>
+          <span class="panel-badge" id="toolCount">0</span>
+        </div>
+        <div class="panel-body" id="toolList"></div>
+      </section>
+    </div>
+
+    <!-- ---------- CENTER COLUMN ---------- -->
+    <div class="column">
+      <section class="panel" style="flex: 0 0 auto;">
+        <!-- Voice Core -->
+        <div class="voice-core" id="voiceCore">
+          <div class="core-wrap">
+            <div class="core-ring r1"></div>
+            <div class="core-ring r2"></div>
+            <div class="core-ring r3"></div>
+            <div class="core-ring r4"></div>
+            <div class="core-ticks"></div>
+
+            <div class="core-wave">
+              <svg viewBox="0 0 200 200">
+                <circle class="wave-path w3" cx="100" cy="100" r="76"></circle>
+                <circle class="wave-path w2" cx="100" cy="100" r="66"></circle>
+                <circle class="wave-path"   cx="100" cy="100" r="56"></circle>
+              </svg>
+            </div>
+
+            <div class="core-nucleus">
+              <span class="glyph" id="coreGlyph">F</span>
+            </div>
+          </div>
+
+          <div class="core-status">
+            <div class="core-state" id="coreState">Standby</div>
+            <div class="core-transcript" id="coreTranscript"></div>
+          </div>
+        </div>
+
+        <div class="panel-foot">
+          <div class="btn-row" style="justify-content:center;">
+            <button class="btn primary" id="btnMic">◉ Listen</button>
+            <button class="btn" id="btnSpeak" title="Speak the last response">🔊 Speak</button>
+            <button class="btn" id="btnStop" title="Stop speaking">■ Stop</button>
+            <button class="btn ghost" id="btnWake" title="Toggle wake word">👂 Wake</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" style="flex: 1 1 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Console</span>
+          <span class="panel-badge" id="consoleBadge">ready</span>
+        </div>
+        <div class="chat-log" id="chatLog">
+          <div class="msg assistant">
+            <div class="msg-avatar">F</div>
+            <div class="msg-body">
+              <div class="msg-role">C.A.R.L.A.</div>
+              <div class="msg-text">
+                <p>All systems nominal. The suite is warmed up and the console is yours.</p>
+                <p>Pick an agent on the left, choose a capability tier, and give me something to chew on.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="composer">
+          <div style="flex:1 1 auto; min-width:0;">
+            <textarea id="prompt" rows="1" placeholder="Address C.A.R.L.A.…"></textarea>
+            <div class="composer-hint" id="composerHint">Enter to send · Shift+Enter for a new line · Ctrl+/ for command mode</div>
+          </div>
+          <div class="composer-side">
+            <button class="btn primary" id="btnSend">Send ▸</button>
+            <button class="btn ghost icon" id="btnClear" title="Clear console">⌫</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ---------- RIGHT COLUMN ---------- -->
+    <div class="column">
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Efficiency Telemetry</span>
+          <span class="panel-badge" id="telBadge">60 min</span>
+        </div>
+        <div class="panel-body">
+          <div class="metric-grid">
+            <div class="metric">
+              <div class="metric-label">Avg Latency</div>
+              <div class="metric-value" id="mLatency">—<span class="metric-unit">ms</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Tokens / sec</div>
+              <div class="metric-value" id="mTps">—</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Requests</div>
+              <div class="metric-value" id="mRequests">—</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Total Tokens</div>
+              <div class="metric-value" id="mTokens">—</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Energy</div>
+              <div class="metric-value" id="mEnergy">—<span class="metric-unit">J</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Power</div>
+              <div class="metric-value" id="mWatts">—<span class="metric-unit">W</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">FLOPs</div>
+              <div class="metric-value" id="mFlops">—</div>
+            </div>
+          </div>
+
+          <div style="margin-top:13px;">
+            <div class="bar-row">
+              <div class="bar-head"><span>CPU</span><b id="barCpuVal">0%</b></div>
+              <div class="bar-track"><div class="bar-fill" id="barCpu" style="width:0%"></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-head"><span>RAM</span><b id="barRamVal">0%</b></div>
+              <div class="bar-track"><div class="bar-fill" id="barRam" style="width:0%"></div></div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-head"><span>VRAM</span><b id="barVramVal">0%</b></div>
+              <div class="bar-track"><div class="bar-fill" id="barVram" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" style="flex: 1 1 auto; min-height: 200px;">
+        <div class="panel-head">
+          <span class="panel-title">Memory Inspector</span>
+          <span class="panel-badge" id="memBadge">0</span>
+        </div>
+        <div class="panel-body">
+          <input type="text" id="memSearch" placeholder="Semantic search…" style="margin-bottom:10px;">
+          <div id="memList"></div>
+        </div>
+        <div class="panel-foot">
+          <div class="btn-row">
+            <button class="btn sm" id="btnMemRefresh">↻ Refresh</button>
+            <button class="btn sm ghost" id="btnMemAdd">+ Store</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Cron Scheduler</span>
+          <span class="panel-badge" id="jobBadge">0</span>
+        </div>
+        <div class="panel-body" style="max-height: 190px;">
+          <div id="jobList"></div>
+          <div style="display:flex; gap:6px; margin-top:9px;">
+            <input type="text" id="jobName" placeholder="Job name" style="flex:1 1 auto;">
+            <input type="text" id="jobSchedule" placeholder="*/5 * * * *" style="width:112px;">
+          </div>
+          <select id="jobAgent" style="margin-top:6px;"></select>
+        </div>
+        <div class="panel-foot">
+          <div class="btn-row">
+            <button class="btn sm primary" id="btnJobAdd">+ Schedule</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Skills Catalog</span>
+          <span class="panel-badge" id="skillBadge">0</span>
+        </div>
+        <div class="panel-body" style="max-height: 150px;">
+          <div id="skillList"></div>
+        </div>
+      </section>
+
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Learning Surfaces</span>
+          <span class="panel-badge" id="learnBadge">—</span>
+        </div>
+        <div class="panel-body" style="max-height: 130px;">
+          <div id="learnList"></div>
+        </div>
+      </section>
+
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Channels</span>
+          <span class="panel-badge" id="chanBadge">—</span>
+        </div>
+        <div class="panel-body" style="max-height: 130px;">
+          <div id="chanList"></div>
+        </div>
+      </section>
+
+      <section class="panel" style="flex: 0 0 auto;">
+        <div class="panel-head">
+          <span class="panel-title">Model Manager</span>
+          <span class="panel-badge" id="modelBadge">—</span>
+          <button class="btn ghost sm" id="btnModels" style="margin-left:auto;">Manage</button>
+        </div>
+        <div class="panel-body" style="max-height: 150px;">
+          <div id="modelList"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== MODEL MANAGER ====================== -->
+<div class="editor-wrap" id="modelMgr">
+  <div class="editor-head">
+    <span class="panel-title">Model Manager</span>
+    <span class="editor-path" id="mmHw">—</span>
+    <select id="mmEngine" style="width:auto; margin-left:auto;">
+      <option value="native_onnx">native (runs inside C.A.R.L.A.)</option>
+      <option value="ollama">ollama</option>
+      <option value="llamacpp">llamacpp (GGUF)</option>
+      <option value="vllm">vllm</option>
+      <option value="sglang">sglang</option>
+    </select>
+    <button class="btn sm" id="mmRefresh">↻ Refresh</button>
+    <button class="btn sm ghost" id="mmClose">✕</button>
+  </div>
+  <div class="editor-body column">
+    <p class="editor-path" style="margin:0 0 12px;">
+      Download a model for a local engine. Models are stored in your
+      C.A.R.L.A. home folder, never inside the application.
+    </p>
+    <div style="margin-bottom:10px;">
+      <span class="editor-path" id="mmStatus"></span>
+    </div>
+    <div id="mmCatalog"></div>
+    <div class="panel-title" style="margin:16px 0 8px;">Installed on this machine</div>
+    <div id="mmLocal"></div>
+  </div>
+</div>
+
+<!-- ====================== CONFIG EDITOR ====================== -->
+<div class="editor-wrap" id="editor">
+  <div class="editor-head">
+    <span class="panel-title">Settings Editor</span>
+    <span class="editor-path" id="editorPath">psycho_carla.toml</span>
+    <button class="btn sm" id="btnEditorReload">↻ Reload</button>
+    <button class="btn sm primary" id="btnEditorSave">Save</button>
+    <button class="btn sm ghost" id="btnEditorClose">✕</button>
+  </div>
+  <div class="editor-body">
+    <textarea class="editor-text" id="editorText" spellcheck="false"></textarea>
+  </div>
+  <div class="editor-status" id="editorStatus">Ready.</div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="/static/carla.js"></script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280">
+<title>C.A.R.L.A. — Voice Audition</title>
+<style>
+  :root{
+    --bg:#070B14; --panel:rgba(13,22,38,.72); --edge:rgba(0,229,255,.22);
+    --cyan:#00E5FF; --blue:#2979FF; --text:#E8F4FF; --dim:#7E93AC;
+    --ok:#3DFFAB; --warn:#FFB84D;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --disp:"Rajdhani","Eurostile",system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--disp);
+    min-height:100vh; padding:32px 40px 60px;
+    background-image:
+      linear-gradient(rgba(0,229,255,.035) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(0,229,255,.035) 1px,transparent 1px),
+      radial-gradient(ellipse 80% 50% at 50% -10%,rgba(41,121,255,.18),transparent 70%);
+    background-size:44px 44px,44px 44px,100% 100%;
+  }
+  header{max-width:1400px;margin:0 auto 28px;display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+  h1{font-size:26px;letter-spacing:.22em;font-weight:700}
+  h1 span{color:var(--cyan);text-shadow:0 0 18px rgba(0,229,255,.55)}
+  .sub{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.08em}
+  .badge{
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+    border:1px solid var(--edge);color:var(--cyan);border-radius:99px;padding:3px 11px;
+    background:rgba(0,229,255,.07);
+  }
+  .wrap{max-width:1400px;margin:0 auto}
+  .note{
+    border-left:2px solid var(--warn); background:rgba(255,184,77,.07);
+    padding:12px 16px; margin-bottom:26px; border-radius:0 8px 8px 0;
+    font-family:var(--mono); font-size:11.5px; line-height:1.75; color:#FFD9A0;
+  }
+  .note b{color:#fff}
+  .note code{color:var(--cyan)}
+  h2{
+    font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--cyan);
+    margin:34px 0 14px; padding-bottom:8px; border-bottom:1px solid rgba(0,229,255,.16);
+    display:flex;align-items:center;gap:10px;
+  }
+  h2 .count{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.05em}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(430px,1fr));gap:12px}
+  .row{
+    background:var(--panel); border:1px solid var(--edge); border-radius:10px;
+    padding:11px 14px; display:grid;
+    grid-template-columns:120px 1fr 64px; align-items:center; gap:14px;
+    backdrop-filter:blur(10px); transition:border-color .2s, background .2s;
+  }
+  .row:hover{border-color:rgba(0,229,255,.5);background:rgba(16,28,48,.82)}
+  .row.playing{border-color:var(--cyan);box-shadow:0 0 22px rgba(0,229,255,.18) inset}
+  .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.09em;color:var(--cyan)}
+  .lbl small{display:block;color:var(--dim);font-size:9px;letter-spacing:.04em;margin-top:3px}
+  .txt{font-size:13px;line-height:1.5;color:var(--text)}
+  .dur{font-family:var(--mono);font-size:10.5px;color:var(--dim);text-align:right}
+  audio{width:100%;height:32px;display:block;filter:invert(.92) hue-rotate(165deg) saturate(.5)}
+  .play{
+    font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+    background:rgba(0,229,255,.1);border:1px solid var(--edge);color:var(--cyan);
+    border-radius:6px;padding:5px 10px;cursor:pointer;transition:.15s;
+  }
+  .play:hover{background:rgba(0,229,255,.22)}
+  footer{max-width:1400px;margin:48px auto 0;padding-top:18px;border-top:1px solid rgba(0,229,255,.14);
+    font-family:var(--mono);font-size:10.5px;color:var(--dim);line-height:2}
+  footer b{color:var(--cyan)}
+</style>
+</head>
+<body>
+<header>
+  <h1>C.A.R.L.A. <span>VOICE</span> AUDITION</h1>
+  <span class="sub">CPU-only synthesis &mdash; no cloud, no GPU</span>
+  <span class="badge" id="countBadge">loading</span>
+</header>
+
+<div class="wrap">
+  <div class="note">
+    <b>Read this first.</b> Neither Piper nor Kokoro ships an Irish (en_IE) voice &mdash; I verified this against
+    the full voice manifests (Piper: 182 voices, zero <code>en_IE</code>; Kokoro: American/British/Japanese/Mandarin/Spanish/French/Hindi/Italian only).
+    So the honest answer to &ldquo;does it sound like C.A.R.L.A.?&rdquo; is: <b>the closest CPU-available options are British English,
+    not Irish.</b> The persona text, cadence and dry wit are what make it C.A.R.L.A. &mdash; the accent is a separate axis.
+    Listen, pick the closest, and I can wire it in as the default.
+  </div>
+
+  <div id="groups"></div>
+
+  <footer>
+    <b>Lines</b> are the actual strings emitted by <code>core/persona.py</code> &mdash; what you hear is what the system says.<br>
+    <b>Piper</b> = ONNX, ~22 kHz, very fast, slightly clipped. &nbsp;<b>Kokoro</b> = 82M params, 24 kHz, smoother and more natural, slower on CPU.<br>
+    <b>To swap the default voice</b>: set <code>[voice].tts_engine</code> and <code>[voice].tts_voice</code> in <code>psycho_carla.toml</code>,
+    then run <code>carla doctor</code> to confirm the backend resolved.
+  </footer>
+</div>
+
+<script>
+const PALETTE = {
+  piper_alba_gb_female:        "Piper · en_GB · alba · female · medium",
+  piper_cori_gb_female_high:  "Piper · en_GB · cori · female · high",
+  piper_alan_gb_male:          "Piper · en_GB · alan · male · medium",
+  kokoro_af_heart_us_female:   "Kokoro · en-US · af_heart · female",
+  kokoro_am_michael_us_male:   "Kokoro · en-US · am_michael · male",
+  kokoro_bf_emma_gb_female:    "Kokoro · en-GB · bf_emma · female",
+  kokoro_bm_george_gb_male:    "Kokoro · en-GB · bm_george · male",
+};
+
+async function load(){
+  const res = await fetch("/voice_samples/manifest.json", {cache:"no-cache"});
+  if(!res.ok){ document.getElementById("countBadge").textContent = "manifest unavailable"; return; }
+  const items = await res.json();
+  document.getElementById("countBadge").textContent = items.length + " samples";
+
+  const groups = {};
+  for(const it of items){ (groups[it.label] ||= []).push(it); }
+
+  const host = document.getElementById("groups");
+  const order = Object.keys(PALETTE);
+  const labels = Object.keys(groups).sort((a,b)=>{
+    const ia = order.indexOf(a), ib = order.indexOf(b);
+    return (ia<0?99:ia) - (ib<0?99:ib);
+  });
+
+  let html = "";
+  for(const label of labels){
+    html += `<h2>${PALETTE[label] || label}<span class="count">${groups[label].length} clips</span></h2><div class="grid">`;
+    for(const it of groups[label]){
+      const id = "a_" + it.file.replace(/\W/g,"_");
+      html += `<div class="row" id="${id}">
+        <div class="lbl">${it.line}<small>${it.duration}s</small></div>
+        <div>
+          <div class="txt">${it.text}</div>
+          <audio controls preload="none" src="/voice_samples/${it.file}"></audio>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:stretch">
+          <button class="play" data-src="/voice_samples/${it.file}">Play</button>
+        </div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+  host.innerHTML = html;
+
+  // Play buttons: only one clip at a time, and pause others.
+  const audios = [...document.querySelectorAll("audio")];
+  document.querySelectorAll(".play").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const target = audios.find(a=>a.getAttribute("src")===btn.dataset.src);
+      if(!target) return;
+      if(!target.paused){ target.pause(); return; }
+      audios.forEach(a=>{ if(a!==target) a.pause(); });
+      target.play();
+    });
+  });
+  audios.forEach(a=>{
+    a.addEventListener("play", ()=>{ a.closest(".row").classList.add("playing"); });
+    a.addEventListener("pause", ()=>{ a.closest(".row").classList.remove("playing"); });
+    a.addEventListener("ended",  ()=>{ a.closest(".row").classList.remove("playing"); });
+  });
+}
+load();
+</script>
+</body>
+</html>

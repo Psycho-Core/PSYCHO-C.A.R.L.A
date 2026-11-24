@@ -487,6 +487,8 @@ class CarlaRuntime:
             }
 
         msgs = list(history or [])
+        if msgs:
+            kwargs["history"] = msgs
         started = time.perf_counter()
         try:
             result = instance.run(

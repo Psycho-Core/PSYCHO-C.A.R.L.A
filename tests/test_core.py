@@ -1259,3 +1259,23 @@ class TestSkillsCatalog:
         assert sc.auto_load is True
         assert hasattr(sc, "max_skills")
         assert hasattr(sc, "validate_on_load")
+
+
+def test_ask_passes_history_to_the_agent(runtime):
+    """Regression: history given to Runtime.ask was silently dropped."""
+    from psycho_carla.agents.base import BaseAgent
+    from psycho_carla.providers.base import Message
+
+    seen = {}
+    orig = BaseAgent.run
+
+    def spy(self, prompt, **kw):
+        seen.update(kw)
+        return orig(self, prompt, **kw)
+
+    BaseAgent.run = spy
+    try:
+        runtime.ask("hi", history=[Message(role="user", content="earlier")])
+    finally:
+        BaseAgent.run = orig
+    assert [m.content for m in seen.get("history", [])] == ["earlier"]

@@ -658,7 +658,7 @@ function appendUser(text) {
 
 function appendAssistant(data) {
   const msg = el('div', 'msg assistant');
-  msg.appendChild(el('div', 'msg-avatar', 'F'));
+  msg.appendChild(el('div', 'msg-avatar', 'C'));
   const body = el('div', 'msg-body');
   body.appendChild(el('div', 'msg-role', 'C.A.R.L.A.'));
 

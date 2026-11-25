@@ -21,7 +21,7 @@ Key facts, all verified 2026-11-13 (today):
   `docs/audits/NAME-CHANGE-AUDIT.md`. The only “Friday” left in the source is the
   weekday in one example doc — that is correct English, leave it.
 - Status: **feature/settings parity with upstream is complete.**
-  475 pytest tests pass (474 + 1 skip); end-to-end smoke is 46/46. See `docs/audits/USER-NAME-AUDIT.md`
+  477 pytest tests pass (476 + 1 skip); end-to-end smoke is 46/46. See `docs/audits/USER-NAME-AUDIT.md`
   for the most recent feature audit.
 - Not yet done (owner-side): the Windows `.exe` has never been built in this
   Linux sandbox — `PsychoCARLA.spec` + `install.ps1` are ready and must be
@@ -61,7 +61,7 @@ Key facts, all verified 2026-11-13 (today):
 | `src/psycho_carla/skills/` | 20 bundled skills, executor, sources |
 | `src/psycho_carla/bench/` | eval suites/scorers; CLI `eval --suite/--compare` |
 | `src/psycho_carla/security/`, `sandbox/`, `memory/`, `learning/`, `workflow/`, `a2a/`, `daemon/`, `mining/`, `analytics/` | supporting subsystems, all implemented |
-| `tests/` | pytest suite (475) + `tests/e2e_smoke.py` (46 checks) |
+| `tests/` | pytest suite (477) + `tests/e2e_smoke.py` (46 checks) |
 | `docs/` | `MODELS.md`, `FEATURES.md`, `ARCHITECTURE.md`, `REFERENCE.md` (long README); history in `docs/audits/` |
 | `PsychoCARLA.spec`, `install.ps1` | Windows packaging (PyInstaller onedir; installer) |
 | `voice_samples/`, `examples/`, `tools/` | samples, example workflows/skills, HUD exporter + sample generators |
@@ -76,7 +76,7 @@ pip install -e .                       # Python ≥3.10 (3.11 recommended)
 carla init                             # writes psycho_carla.toml
 carla doctor                           # environment check — expect “Ready”
 carla serve                            # HUD + API on http://127.0.0.1:8787
-python -m pytest tests/ -q             # 475 tests, expect exit 0
+python -m pytest tests/ -q             # 477 tests, expect exit 0
 ```
 
 End-to-end smoke (needs a configured channel or the bridge is disabled):
@@ -125,8 +125,11 @@ pyinstaller PsychoCARLA.spec           # → dist/PsychoCARLA/PsychoCARLA.exe
   risky tools directly must pass `approved=True`.
 - **Windows exe:** built by `.github/workflows/release.yml` from `PsychoCARLA.spec`,
   entry `packaging/carla_app.py` (desktop.py cannot be the frozen entry — relative
-  imports). The spec was verified to build and boot on Linux only; the Windows
-  artifact has not been run by a person. First launch calls `ensure_config()`.
+  imports). A windowed exe has `sys.stdout/stderr = None` — `desktop.ensure_std_streams()`
+  fixes that (uvicorn crashed without it); startup errors go to `<home>/logs/desktop.log`;
+  `PsychoCARLA.exe --no-window` serves without a window. The release job smoke-tests
+  the exe headless on Windows; the real window has not been checked by a person.
+  First launch calls `ensure_config()`.
 
 ## Traps previous sessions hit (don’t repeat)
 

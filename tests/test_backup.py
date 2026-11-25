@@ -175,3 +175,21 @@ def test_desktop_no_window_serves_and_logs_crashes(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError):
         desktop.main(["--no-window", "--port", "1"])
     assert "boom" in (tmp_path / "logs" / "desktop.log").read_text()
+
+
+def test_windowed_exe_without_std_streams_can_still_start_uvicorn(tmp_path, monkeypatch):
+    """The first real Windows exe died here: sys.stdout is None in a no-console build."""
+    import sys
+
+    monkeypatch.setenv("PSYCHO_CARLA_HOME", str(tmp_path))
+    from psycho_carla import desktop
+
+    monkeypatch.setattr(sys, "stdout", None)
+    monkeypatch.setattr(sys, "stderr", None)
+    monkeypatch.setattr(sys, "stdin", None)
+    desktop.ensure_std_streams()
+    assert sys.stdout is not None and sys.stderr is not None and sys.stdin is not None
+    import uvicorn
+    from fastapi import FastAPI
+
+    uvicorn.Config(FastAPI(), log_level="warning")        # raised AttributeError before the fix

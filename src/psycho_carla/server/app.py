@@ -54,9 +54,10 @@ def create_app(
     *,
     runtime: CarlaRuntime | None = None,
     start_runtime: bool = True,
+    ensure: bool = True,
 ) -> FastAPI:
     """Build the C.A.R.L.A. web application."""
-    if config is None and runtime is None:
+    if ensure and config is None and runtime is None:
         from ..core.config import ensure_config
 
         ensure_config()
@@ -380,4 +381,4 @@ async def _handle_ws_message(app: FastAPI, msg: dict[str, Any],
                                    "data": rt.status()})
 
 
-app = create_app()
+app = create_app(ensure=False)   # importing this module must not write files

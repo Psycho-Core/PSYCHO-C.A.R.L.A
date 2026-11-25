@@ -117,3 +117,16 @@ def test_first_launch_creates_a_working_config(tmp_path, monkeypatch):
 
     ensure_config()
     assert "# mine" in cfg.read_text()                       # never overwritten
+
+
+def test_cli_survives_a_legacy_windows_console_encoding(tmp_path):
+    """CI caught `carla init` crashing on cp1252 stdout (the check mark)."""
+    import os
+    import subprocess
+    import sys
+
+    env = dict(os.environ, PSYCHO_CARLA_HOME=str(tmp_path), PYTHONIOENCODING="cp1252")
+    env.pop("PYTHONUTF8", None)
+    r = subprocess.run([sys.executable, "-m", "psycho_carla.cli.main", "init", "--force"],
+                       env=env, capture_output=True, timeout=60)
+    assert r.returncode == 0, r.stderr.decode("utf-8", "replace")[-300:]

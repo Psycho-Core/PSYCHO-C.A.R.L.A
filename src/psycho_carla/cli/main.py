@@ -3073,7 +3073,17 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _use_utf8_output() -> None:
+    """Never crash on a ✓ or ═ just because the console / pipe is cp1252 (Windows)."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _use_utf8_output()
     # Restart once with espeak-ng on the dynamic loader path, if a local
     # install needs it. Safe here because this is a process entrypoint.
     from ..voice.tts import maybe_reexec_with_espeak

@@ -285,7 +285,7 @@ def hf_download_onnx(
             local_dir=str(target),
             allow_patterns=patterns,
         )
-        progress(f"downloaded {repo}", 100.0)
+        progress(f"downloaded {repo}", 1.0)
     except Exception as exc:
         return DownloadResult(
             False, model_id or repo, "native_onnx",
@@ -572,6 +572,7 @@ def _download_resumable(url: str, out: Path, progress: ProgressFn,
                 total = have + length if length else 0
                 mode = "ab" if have else "wb"
                 done = have
+                last_pct = -1
                 with open(part, mode) as fh:
                     while True:
                         chunk = resp.read(1024 * 1024)
@@ -579,8 +580,9 @@ def _download_resumable(url: str, out: Path, progress: ProgressFn,
                             break
                         fh.write(chunk)
                         done += len(chunk)
-                        if total:
-                            progress(out.name, done * 100.0 / total)
+                        if total and int(done * 100 / total) != last_pct:
+                            last_pct = int(done * 100 / total)
+                            progress(out.name, done / total)      # fraction 0..1
             if total and part.stat().st_size != total:
                 last = f"incomplete ({part.stat().st_size} of {total} bytes)"
                 continue

@@ -418,3 +418,12 @@ def test_marker_release_without_binaries_is_skipped():
     assert rel["tag_name"] == "b9000" and "win-cpu" in asset["name"]
     assert le.find_release_asset(releases[:1], "cpu", "windows") == (None, None)
     assert "nightly-tag.txt" in le.describe_releases(releases)
+
+
+def test_download_progress_is_a_fraction_and_not_spammy(tmp_path, monkeypatch):
+    """The CLI multiplies by 100; the first real run printed '9844.6%'."""
+    monkeypatch.setattr(mm.urllib.request, "urlopen", lambda req, timeout=0: _Resp(b"x" * 5_000_000))
+    seen = []
+    mm._download_resumable("http://x/m.gguf", tmp_path / "m.gguf", lambda m, p=None: seen.append(p))
+    assert seen and all(0.0 <= p <= 1.0 for p in seen) and seen[-1] == 1.0
+    assert len(seen) <= 101

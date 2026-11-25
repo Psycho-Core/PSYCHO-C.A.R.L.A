@@ -17,9 +17,19 @@ in one Python package (`psycho_carla`).
   custom models (any Hugging Face repo / GGUF file), OpenRouter, CPU / GPU switch
 - Persistent memory, scheduler, MCP client + server, A2A, workflows, local telemetry
 - Voice (optional): Kokoro / Piper TTS, faster-whisper STT, working "hey carla" wake word, voice audition page
-- Export your conversations, or a fine-tuning dataset, as files that never leave your PC
+- **Safe mode (on by default):** before an agent edits files, runs code or deletes
+  anything, the request waits in the **Approvals** panel for your OK
+- Backup / restore of config, memory and skills; export of conversations; a LoRA
+  fine-tuning script for training on your own chats ([docs/FINETUNE.md](docs/FINETUNE.md))
 
-## Install (Windows 11, Python 3.10+)
+## Download (Windows 11)
+
+Grab `PsychoCARLA-windows-x64.zip` from the [Releases page](../../releases), unzip,
+run `PsychoCARLA\PsychoCARLA.exe`. A short welcome wizard asks what to call you,
+installs the engine and picks a model. (Built by GitHub Actions; not code-signed,
+so SmartScreen may ask you to confirm. Voice is not in this build.)
+
+## Install from source (Windows 11, Python 3.10+)
 
 ```powershell
 py -3.11 -m venv .venv
@@ -49,7 +59,7 @@ Everything is also available from the CLI: `carla model --help`.
 
 ```text
 carla chat | ask "…"          talk to it
-carla engine install|status · carla model auto|custom|cloud|free|device|remote|list|local
+carla backup create|restore · carla engine install|status · carla model auto|custom|cloud|free|device|remote|list|local
 carla export --format markdown|json|training -o out.md
 carla agents | tiers | memory | cron | doctor
 ```
@@ -77,7 +87,7 @@ See [PSYCHO.md](PSYCHO.md) and [docs/FEATURES.md](docs/FEATURES.md).
 
 ## More
 
-[Models & GPU](docs/MODELS.md) · [Features](docs/FEATURES.md) ·
+[Models & GPU](docs/MODELS.md) · [Fine-tuning](docs/FINETUNE.md) · [Features](docs/FEATURES.md) ·
 [Architecture](docs/ARCHITECTURE.md) · [MCP](docs/MCP.md) ·
 [Voice](docs/VOICE.md) · [Full reference](docs/REFERENCE.md) ·
 [Audits](docs/audits/) · [Technical map for developers/AI: CLAUDE.md](CLAUDE.md)

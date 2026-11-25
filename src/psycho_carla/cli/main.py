@@ -1569,6 +1569,28 @@ def cmd_engine(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_backup(args: argparse.Namespace) -> int:
+    """Back up / restore config, memory, sessions, knowledge and skills."""
+    from pathlib import Path
+
+    from ..core.backup import create_backup, restore_backup
+    from ..core.config import load_config
+
+    home = load_config().home
+    if args.backup_cmd == "create":
+        out = Path(args.output or time.strftime("carla-backup-%Y%m%d-%H%M%S.zip"))
+        out.write_bytes(create_backup(home, include_vault=args.include_vault))
+        print(_c(f"\n  ✓ wrote {out}"
+                 + (" (includes your API-key vault — keep it private)" if args.include_vault else "")
+                 + "\n", "green"))
+        return 0
+    r = restore_backup(home, Path(args.file).read_bytes())
+    print(_c(f"\n  {'✓' if r['ok'] else '✗'} {r['message']}\n", "green" if r["ok"] else "amber"))
+    if r.get("previous_state"):
+        print(f"    previous files kept in {r['previous_state']}\n")
+    return 0 if r["ok"] else 1
+
+
 def cmd_export(args: argparse.Namespace) -> int:
     """Export conversations (markdown/json) or a fine-tuning dataset (training)."""
     from ..core.config import load_config
@@ -2672,6 +2694,16 @@ def build_parser() -> argparse.ArgumentParser:
                     help="vulkan = any GPU (AMD/NVIDIA/Intel); cpu = no GPU; hip = AMD ROCm")
     esub.add_parser("status", help="Is the engine installed?")
     sp.set_defaults(func=cmd_engine)
+
+    # backup
+    sp = sub.add_parser("backup", help="Back up or restore your config, memory and skills")
+    bsub = sp.add_subparsers(dest="backup_cmd", required=True)
+    bc = bsub.add_parser("create", help="Write a backup zip")
+    bc.add_argument("-o", "--output", default="")
+    bc.add_argument("--include-vault", action="store_true", help="also include saved API keys (encrypted)")
+    br = bsub.add_parser("restore", help="Restore a backup zip (current files are kept aside)")
+    br.add_argument("file")
+    sp.set_defaults(func=cmd_backup)
 
     # export
     sp = sub.add_parser("export", help="Export conversations or a training dataset")

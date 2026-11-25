@@ -53,17 +53,17 @@ async def setup_state(request: Request):
 
     runtime = _runtime(request)
     router_ = runtime.router
-    res = router_.resolve(None)
     try:
+        res = router_.resolve(None)
         ok, detail = res.adapter.health()
     except Exception as exc:
-        ok, detail = False, str(exc)
+        res, ok, detail = None, False, str(exc)
     pick = best_gguf_model() or best_native_model()
     return {
         "needs_setup": not ok,
         "reason": "" if ok else detail,
-        "provider": res.provider,
-        "model": res.model,
+        "provider": res.provider if res else "",
+        "model": res.model if res else "",
         "free_ram_gb": round(_free_memory_gb(), 1),
         "native_pick": pick.model_id if pick else "",
     }
@@ -95,6 +95,40 @@ async def voice_select(request: Request, body: dict[str, Any]):
     save_config(config)
     return {"ok": True, "engine": engine, "voice": voice,
             "message": f"voice set to {engine} / {voice} — restart C.A.R.L.A. to hear it"}
+
+
+@router.post("/persona/name")
+async def persona_name(request: Request, body: dict[str, Any]):
+    """Set what she calls you (``[persona] user_name``). Blank = 'Psycho'."""
+    from ...core.config import save_config
+
+    runtime = _runtime(request)
+    name = str(body.get("name", "")).strip()[:40]
+    if any(c in name for c in '\r\n"\\'):
+        raise HTTPException(status_code=400, detail="that name has characters I can't store")
+    runtime.config.persona.user_name = name
+    save_config(runtime.config)
+    return {"ok": True, "name": runtime.config.persona.address_name}
+
+
+@router.get("/safe-mode")
+async def safe_mode_get(request: Request):
+    from ...security.capabilities import SAFE_MODE_TOOLS
+
+    runtime = _runtime(request)
+    return {"enabled": bool(runtime.config.security.enforce_tool_confirmation),
+            "tools": list(SAFE_MODE_TOOLS)}
+
+
+@router.post("/safe-mode")
+async def safe_mode_set(request: Request, body: dict[str, Any]):
+    """Turn safe mode (approval before risky tools) on or off; saved to the config."""
+    from ...core.config import save_config
+
+    runtime = _runtime(request)
+    runtime.config.security.enforce_tool_confirmation = bool(body.get("enabled", True))
+    save_config(runtime.config)
+    return {"enabled": runtime.config.security.enforce_tool_confirmation}
 
 
 @router.get("/hardware")
@@ -545,7 +579,7 @@ async def list_tools(request: Request):
 async def execute_tool(request: Request, name: str, body: dict[str, Any]):
     runtime = _runtime(request)
     args = body.get("arguments") or {}
-    result = runtime.tools.execute(name, args)
+    result = runtime.tools.execute(name, args, approved=True)
     runtime.broadcast("tool_executed", result.to_dict())
     return result.to_dict()
 
@@ -898,6 +932,34 @@ async def models_remote(request: Request, body: dict[str, Any]):
     )
     if not result.get("ok"):
         raise HTTPException(status_code=400, detail=result.get("error", "failed"))
+    return result
+
+
+@router.get("/backup")
+async def backup_download(request: Request, include_vault: bool = False):
+    """Download a backup zip of your config, memory, sessions, knowledge and skills."""
+    import time as _t
+
+    from fastapi.responses import Response
+
+    from ...core.backup import create_backup
+
+    runtime = _runtime(request)
+    data = create_backup(runtime.config.home, include_vault=include_vault)
+    name = _t.strftime("carla-backup-%Y%m%d-%H%M%S.zip")
+    return Response(data, media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@router.post("/restore")
+async def backup_restore(request: Request):
+    """Restore a backup zip sent as the raw request body."""
+    from ...core.backup import restore_backup
+
+    runtime = _runtime(request)
+    result = restore_backup(runtime.config.home, await request.body())
+    if not result["ok"]:
+        raise HTTPException(status_code=400, detail=result["message"])
     return result
 
 

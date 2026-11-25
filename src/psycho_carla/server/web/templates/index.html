@@ -65,9 +65,53 @@
       <button class="btn sm" id="btnHdrModels" title="Download, start and stop models">Models</button>
       <button class="btn sm" id="btnFreeMem" title="Unload every model and free the memory">Free memory</button>
       <button class="btn ghost sm" id="btnExport" title="Download your conversations">Export</button>
+      <button class="btn ghost sm" id="btnBackup" title="Download a backup of your config, memory and skills">Backup</button>
+      <button class="btn ghost sm" id="btnRestore" title="Restore from a backup file">Restore</button>
+      <input type="file" id="restoreFile" accept=".zip" hidden>
       <button class="btn ghost sm" id="btnSettings" title="Edit psycho_carla.toml">⚙ Config</button>
     </div>
   </header>
+
+  <!-- ====================== FIRST-RUN WIZARD ====================== -->
+  <div class="wizard" id="wizard" hidden>
+    <div class="wizard-card">
+      <div class="panel-title">Welcome — let's get you set up <span class="editor-path" id="wizStep"></span></div>
+
+      <div class="wiz-page" data-step="1">
+        <p>What should she call you?</p>
+        <input type="text" id="wizName" placeholder="Psycho (leave blank to keep this)" maxlength="40">
+      </div>
+
+      <div class="wiz-page" data-step="2" hidden>
+        <p>How will models run? <span class="editor-path" id="wizHw"></span></p>
+        <select id="wizBackend">
+          <option value="vulkan">On this PC's graphics card (AMD / NVIDIA / Intel)</option>
+          <option value="cpu">On the processor only (no graphics card, or an old PC)</option>
+        </select>
+        <div class="mm-row" style="margin-top:10px;">
+          <button class="btn sm primary" id="wizInstall">Install the engine</button>
+          <span class="editor-path" id="wizEngineMsg"></span>
+        </div>
+        <p class="editor-path">Prefer the cloud? Skip this and add an OpenRouter key later in Models.</p>
+      </div>
+
+      <div class="wiz-page" data-step="3" hidden>
+        <p>Pick a model.</p>
+        <div class="mm-row">
+          <button class="btn sm primary" id="wizAuto">Auto-pick the best one for this PC</button>
+          <button class="btn sm" id="wizManual">I'll choose myself</button>
+        </div>
+        <p class="editor-path" id="wizModelMsg"></p>
+      </div>
+
+      <div class="mm-row wiz-nav">
+        <button class="btn sm ghost" id="wizSkip">Skip</button>
+        <span style="flex:1"></span>
+        <button class="btn sm" id="wizBack">Back</button>
+        <button class="btn sm primary" id="wizNext">Next</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ====================== SETUP BANNER ====================== -->
   <div class="setup-banner" id="setupBanner" hidden>
@@ -185,6 +229,20 @@
 
     <!-- ---------- RIGHT COLUMN ---------- -->
     <div class="column">
+      <section class="panel" style="flex: 0 0 auto;" id="approvalsPanel">
+        <div class="panel-head">
+          <span class="panel-title">Approvals</span>
+          <span class="panel-badge" id="approvalBadge">0</span>
+        </div>
+        <div class="panel-body" style="max-height: 230px;">
+          <p class="editor-path" id="approvalHint">Safe mode: before an agent edits files or runs code, it asks here.</p>
+          <div id="approvalList"></div>
+          <label class="editor-path" style="display:block; margin-top:8px;">
+            <input type="checkbox" id="safeModeToggle" checked> Safe mode (ask before risky actions)
+          </label>
+        </div>
+      </section>
+
       <section class="panel" style="flex: 0 0 auto;">
         <div class="panel-head">
           <span class="panel-title">Efficiency Telemetry</span>

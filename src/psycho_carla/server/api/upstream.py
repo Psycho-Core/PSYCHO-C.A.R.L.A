@@ -1038,7 +1038,7 @@ async def approvals_approve(request: Request, action_id: str):
     runtime = _runtime(request)
 
     def execute(tool: str, arguments: dict[str, Any]) -> str:
-        result = runtime.tools.execute(tool, arguments)
+        result = runtime.tools.execute(tool, arguments, approved=True)
         return result.as_message() if hasattr(result, "as_message") \
             else str(result)
 

@@ -90,6 +90,9 @@ class ToolRegistry:
         self._enabled: set[str] = set()
         self._disabled: set[str] = set()
         self._history: list[dict[str, Any]] = []
+        #: Safe-mode hook, set by the runtime: ``gate(name, args)`` returns a
+        #: blocking ``ToolResult`` (the call was queued for approval) or ``None``.
+        self.gate: Callable[[str, dict[str, Any]], ToolResult | None] | None = None
 
     # -- registration ----------------------------------------------------- #
     def register(
@@ -165,8 +168,14 @@ class ToolRegistry:
         return [t.to_dict() for t in self.all()]
 
     # -- execution ---------------------------------------------------------- #
-    def execute(self, name: str, arguments: dict[str, Any] | None = None) -> ToolResult:
-        """Execute a tool by name, capturing errors as structured results."""
+    def execute(self, name: str, arguments: dict[str, Any] | None = None, *,
+                approved: bool = False) -> ToolResult:
+        """Execute a tool by name, capturing errors as structured results.
+
+        ``approved=True`` is for calls a person has already authorised (the
+        HUD's own tool runner and the approval queue); everything else goes
+        through the safe-mode gate first.
+        """
         args = arguments or {}
         tool = self._tools.get(name)
         if tool is None:
@@ -177,6 +186,12 @@ class ToolRegistry:
             res = ToolResult(tool=name, ok=False, error=f"Tool '{name}' is disabled")
             self._record(res)
             return res
+
+        if not approved and self.gate is not None:
+            blocked = self.gate(name, dict(args))
+            if blocked is not None:
+                self._record(blocked)
+                return blocked
 
         t0 = time.perf_counter()
         try:

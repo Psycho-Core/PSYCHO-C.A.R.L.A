@@ -1,0 +1,97 @@
+name: Build Windows release
+
+# Builds PsychoCARLA.exe with PyInstaller on a Windows runner and publishes it
+# as a GitHub Release asset. Run it from the Actions tab ("Run workflow"), or
+# push a tag like v1.0.0.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v1.0.0"
+        required: true
+        default: "v1.0.0"
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[packaging,desktop]"
+
+      - name: Tests
+        run: |
+          pip install pytest pytest-asyncio
+          carla init
+          python -m pytest tests/ -q -p no:cacheprovider
+
+      - name: Build exe
+        run: pyinstaller PsychoCARLA.spec --noconfirm
+
+      - name: Smoke test the exe (starts it and asks it for its health page)
+        id: smoke
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $env:PSYCHO_CARLA_HOME = Join-Path $env:RUNNER_TEMP "carla-smoke"
+          $p = Start-Process -FilePath "dist/PsychoCARLA/PsychoCARLA.exe" -ArgumentList "--port","8791" -PassThru
+          $ok = $false
+          for ($i = 0; $i -lt 40; $i++) {
+            Start-Sleep -Seconds 2
+            try {
+              $r = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:8791/healthz" -TimeoutSec 3
+              if ($r.StatusCode -eq 200) { $ok = $true; break }
+            } catch {}
+          }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          if (-not $ok) { throw "the exe did not answer /healthz within 80 seconds" }
+
+      - name: Package
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/PsychoCARLA" -DestinationPath "PsychoCARLA-windows-x64.zip"
+          (Get-FileHash "PsychoCARLA-windows-x64.zip" -Algorithm SHA256).Hash.ToLower() + "  PsychoCARLA-windows-x64.zip" | Out-File -Encoding ascii "PsychoCARLA-windows-x64.zip.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PsychoCARLA-windows-x64
+          path: |
+            PsychoCARLA-windows-x64.zip
+            PsychoCARLA-windows-x64.zip.sha256
+
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SMOKE: ${{ steps.smoke.outcome }}
+        run: |
+          $notes = @"
+          Windows 11 build of PSYCHO-C.A.R.L.A., built automatically by GitHub Actions from this repository.
+
+          **How to use:** unzip, run ``PsychoCARLA\PsychoCARLA.exe``. On first launch it creates its config; click **Auto-pick a model** (it downloads the llama.cpp engine and a model that fits your PC).
+
+          **Honest status:** the automated tests passed on Windows and the exe was built from source, but it has not been run by a person yet. Automated start-up check of the exe: **$env:SMOKE**. Voice is not included in this build (install from source with ``pip install -e ".[voice]"``). Windows SmartScreen may warn because the exe is not code-signed — choose *More info -> Run anyway* if you trust this repository.
+
+          SHA-256 is in the ``.sha256`` file.
+          "@
+          $exists = $true
+          gh release view $env:TAG 2>$null | Out-Null
+          if ($LASTEXITCODE -ne 0) { $exists = $false }
+          if ($exists) {
+            gh release upload $env:TAG PsychoCARLA-windows-x64.zip PsychoCARLA-windows-x64.zip.sha256 --clobber
+          } else {
+            gh release create $env:TAG PsychoCARLA-windows-x64.zip PsychoCARLA-windows-x64.zip.sha256 --title "PSYCHO-C.A.R.L.A. $env:TAG (Windows)" --notes "$notes" --prerelease --target $env:GITHUB_SHA
+          }

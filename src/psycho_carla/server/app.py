@@ -56,6 +56,10 @@ def create_app(
     start_runtime: bool = True,
 ) -> FastAPI:
     """Build the C.A.R.L.A. web application."""
+    if config is None and runtime is None:
+        from ..core.config import ensure_config
+
+        ensure_config()
     cfg = config or load_config()
 
     @contextlib.asynccontextmanager

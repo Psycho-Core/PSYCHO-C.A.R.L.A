@@ -80,12 +80,14 @@ class ModelLifecycle:
         return rows
 
     def partial_downloads(self) -> list[dict[str, Any]]:
-        """Downloads that never finished, so they can be cleared out."""
+        """Downloads that never finished (ONNX folders and GGUF ``.part`` files)."""
+        from psycho_carla.intelligence.model_manager import partial_gguf_downloads
+
+        found: list[dict[str, Any]] = list(partial_gguf_downloads())
         root = _native_root()
         if not root.exists():
-            return []
+            return found
 
-        found: list[dict[str, Any]] = []
         for directory in sorted(p for p in root.iterdir() if p.is_dir()):
             if _has_complete_graph(directory):
                 continue  # a complete download
@@ -345,22 +347,29 @@ class ModelLifecycle:
     def delete_partial(self, model_id: str = "") -> dict[str, Any]:
         """Remove partial downloads — the ones that never finished."""
         from psycho_carla.intelligence.model_manager import (
-            delete_native_model,
+            delete_native_model, delete_partial_gguf,
         )
 
-        if model_id:
-            targets = [model_id]
+        if model_id.startswith("file:"):
+            return delete_partial_gguf(model_id)
+        gguf_removed: list[str] = []
+        if not model_id:
+            gguf_removed = delete_partial_gguf().get("removed", [])
+            targets = [row["id"] for row in self.partial_downloads()
+                       if not str(row["id"]).startswith("file:")]
         else:
-            targets = [row["id"] for row in self.partial_downloads()]
+            targets = [model_id]
 
         if not targets:
             return {
                 "ok": True,
-                "message": "there are no partial downloads to clean up",
-                "removed": [],
+                "message": (f"cleaned up {len(gguf_removed)} partial download"
+                            f"{'s' if len(gguf_removed) != 1 else ''}" if gguf_removed
+                            else "there are no partial downloads to clean up"),
+                "removed": gguf_removed,
             }
 
-        removed: list[str] = []
+        removed: list[str] = list(gguf_removed)
         problems: list[str] = []
         for target in targets:
             result = delete_native_model(target)

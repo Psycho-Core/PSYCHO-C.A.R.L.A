@@ -157,7 +157,7 @@ def channel_approve(code: str) -> str:
     if approvals is None:
         return "Error: the approval store is not initialised."
     entry = approvals.queue(code, kind="channel", reason="channel pairing code")
-    return f"Queued channel pairing as approval #{entry['id']}."
+    return f"Queued channel pairing as approval {entry.id}."
 
 
 # --------------------------------------------------------------------------- #
@@ -174,7 +174,7 @@ def agent_spawn(command: str, cwd: str = "") -> str:
         command, kind="agent_spawn", reason="external agent process spawn"
     )
     return (
-        f"Spawn request queued as approval #{entry['id']}: {command!r}. "
+        f"Spawn request queued as approval {entry.id}: {command!r}. "
         "Approve it in the HUD Approvals panel before it runs."
     )
 
@@ -364,15 +364,20 @@ def run_tool(tool: str, arguments: str = "{}") -> str:
 # --------------------------------------------------------------------------- #
 
 
-def approval_action(approval_id: int, action: str = "approve") -> str:
-    """Approve or reject a queued approval."""
+def approval_action(approval_id: str, action: str = "approve") -> str:
+    """Reject a queued approval (only the owner can approve)."""
     runtime = _runtime()
     if runtime is None:
         return _need_runtime("approval_action")
-    entry = runtime.approvals.decide(int(approval_id), action == "approve")
+    approve = action == "approve"
+    if approve:
+        # Safe mode only means something if an agent cannot approve itself.
+        return ("Error: approvals can only be granted by the owner, in the HUD "
+                "Approvals panel — not by an agent.")
+    entry = runtime.approvals.decide(str(approval_id), False)
     if entry is None:
-        return f"Error: no approval #{approval_id}."
-    return f"Approval #{approval_id} {'approved' if action == 'approve' else 'rejected'}."
+        return f"Error: no approval {approval_id}."
+    return f"Approval {approval_id}: {entry.status}."
 
 
 def skills_list() -> str:
@@ -481,7 +486,7 @@ def register(registry: ToolRegistry | None = None) -> ToolRegistry:
     reg.register("delegate_to_coworker", delegate_to_coworker, "Delegate to a coworker agent.", _s({"agent": {"type": "string"}, "task": {"type": "string"}}, ["agent", "task"]), namespace="agents")
     reg.register("local_tool_autonomy", local_tool_autonomy, "Autonomous local tool run for a task.", _s({"task": {"type": "string"}}, ["task"]), namespace="agents")
     reg.register("run_tool", run_tool, "Run any registered tool by name with JSON arguments.", _s({"tool": {"type": "string"}, "arguments": {"type": "string"}}, ["tool"]), namespace="core")
-    reg.register("approval_action", approval_action, "Approve or reject a queued approval.", _s({"approval_id": {"type": "integer"}, "action": {"type": "string"}}, ["approval_id"]), namespace="ops")
+    reg.register("approval_action", approval_action, "Approve or reject a queued approval.", _s({"approval_id": {"type": "string"}, "action": {"type": "string"}}, ["approval_id"]), namespace="ops")
     reg.register("skills_list", skills_list, "List installed skills.", _s({}), namespace="skills")
     reg.register("knowledge_search", knowledge_search, "Search the synced connector knowledge base.", _s({"query": {"type": "string"}, "top_k": {"type": "integer"}}, ["query"]), namespace="knowledge")
     reg.register("voice_speak", voice_speak, "Speak text aloud.", _s({"text": {"type": "string"}}, ["text"]), namespace="voice")

@@ -27,6 +27,17 @@ smoke suite is 46/46 (see `docs/audits/PARITY-AUDIT-7.md`,
   first-class metrics), and an efficiency summary in HUD, CLI, and API.
 
 ## A2. Intelligence & models
+- **Safe mode** (default on): shell/code/file-write/delete/patch/commit tool calls
+  are queued in the HUD **Approvals** panel instead of running; an agent cannot
+  approve its own request. `[security] enforce_tool_confirmation = false` or the
+  panel checkbox turns it off.
+- **Backup / restore** (`carla backup`, HUD buttons): config, memory, sessions,
+  knowledge, skills; models/engine excluded; vault only with `--include-vault`.
+- **First-run wizard** in the HUD; first launch writes a starter config itself.
+- **GGUF downloads resume** (`.part` files) and partial downloads can be cleared;
+  complete models can be deleted (the engine is stopped first if it holds the file).
+- **Windows release build**: GitHub Actions builds `PsychoCARLA.exe` (see
+  `.github/workflows/release.yml`) and publishes it under Releases.
 - **Managed llama.cpp engine** (`native_gguf`): C.A.R.L.A. downloads the
   official llama.cpp build and runs GGUF models (3B–32B) itself as a hidden
   child process — no Ollama. Backends: Vulkan (any GPU), CPU, HIP.

@@ -1216,7 +1216,7 @@ function mmRenderLocal(data) {
 
     data.partial.forEach(function (p) {
       const row = el('div', 'mem-row');
-      row.appendChild(el('span', 'mem-text', p.id));
+      row.appendChild(el('span', 'mem-text', p.name || p.id));
       row.appendChild(el('span', 'mem-meta', p.size_mb + ' MB'));
       const clear = el('button', 'btn sm ghost', 'Clear');
       clear.style.marginLeft = '10px';
@@ -1307,6 +1307,7 @@ async function mmActivate(modelId, btn) {
 
 /* Remove a downloaded model from this machine. */
 async function mmDelete(modelId, engine, btn) {
+  if (!window.confirm('Delete ' + modelId + ' from this PC? You can download it again later.')) return;
   const status = $('mmStatus');
   if (btn) { btn.disabled = true; btn.textContent = 'Deleting…'; }
   if (status) status.textContent = 'Deleting ' + modelId + '…';
@@ -1644,3 +1645,123 @@ document.addEventListener('DOMContentLoaded', function () {
   bind('mmOrGo', mmOrGo);
   ['btnModels', 'btnHdrModels', 'btnSetupModels'].forEach(function (id) { bind(id, mmEngineRefresh); });
 });
+
+
+/* ---- Approvals (safe mode) ---------------------------------------------- */
+async function refreshApprovals() {
+  const list = $('approvalList');
+  if (!list) return;
+  try {
+    const d = await api('/v1/approvals/pending');
+    const items = d.pending || [];
+    $('approvalBadge').textContent = items.length;
+    const panel = $('approvalsPanel');
+    if (items.length && panel) panel.classList.remove('collapsed');
+    list.innerHTML = '';
+    items.forEach(function (a) {
+      const box = el('div', 'mem-item');
+      let args = '';
+      try { args = JSON.stringify(a.arguments); } catch (e) { args = ''; }
+      box.appendChild(el('div', 'mem-text', a.kind === 'tool' ? a.tool : a.kind + ': ' + a.tool));
+      if (args && args !== '{}') {
+        const m = el('div', 'mem-meta', args.length > 220 ? args.slice(0, 220) + '…' : args);
+        m.style.wordBreak = 'break-all'; box.appendChild(m);
+      }
+      const row = el('div', 'mem-actions');
+      const yes = el('button', 'btn sm primary', 'Approve');
+      const no = el('button', 'btn sm ghost', 'Deny');
+      yes.onclick = function () { decideApproval(a.id, true); };
+      no.onclick = function () { decideApproval(a.id, false); };
+      row.appendChild(yes); row.appendChild(no); box.appendChild(row);
+      list.appendChild(box);
+    });
+    if (!items.length) {
+      const none = el('div', 'mem-meta', 'Nothing waiting.'); list.appendChild(none);
+    }
+  } catch (e) { /* server restarting */ }
+}
+
+async function decideApproval(id, approve) {
+  try { await postJSON('/v1/approvals/' + id + (approve ? '/approve' : '/deny')); } catch (e) { toastLine('✗ ' + e.message); }
+  refreshApprovals();
+}
+
+async function initSafeMode() {
+  const box = $('safeModeToggle');
+  if (!box) return;
+  try { box.checked = (await api('/api/safe-mode')).enabled; } catch (e) { /* ignore */ }
+  box.onchange = async function () {
+    try { await postJSON('/api/safe-mode', { enabled: box.checked }); }
+    catch (e) { toastLine('✗ ' + e.message); }
+  };
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  setTimeout(function () { refreshApprovals(); initSafeMode(); setInterval(refreshApprovals, 4000); }, 800);
+});
+
+
+/* ---- Backup / restore ---------------------------------------------------- */
+document.addEventListener('DOMContentLoaded', function () {
+  const b = $('btnBackup'), r = $('btnRestore'), f = $('restoreFile');
+  if (b) b.addEventListener('click', function () { window.location.href = '/api/backup'; });
+  if (r && f) {
+    r.addEventListener('click', function () { f.click(); });
+    f.addEventListener('change', async function () {
+      if (!f.files.length) return;
+      if (!window.confirm('Restore from ' + f.files[0].name + '? Your current config, memory and skills are kept aside first.')) { f.value = ''; return; }
+      try {
+        const res = await fetch('/api/restore', { method: 'POST', body: f.files[0] });
+        const d = await res.json();
+        toastLine((res.ok ? '✓ ' : '✗ ') + (d.message || d.detail || 'done'));
+      } catch (e) { toastLine('✗ ' + e.message); }
+      f.value = '';
+    });
+  }
+});
+
+
+/* ---- First-run wizard ---------------------------------------------------- */
+let wizStep = 1;
+function wizShow(n) {
+  wizStep = Math.max(1, Math.min(3, n));
+  document.querySelectorAll('.wiz-page').forEach(function (p) { p.hidden = Number(p.dataset.step) !== wizStep; });
+  $('wizStep').textContent = '(step ' + wizStep + ' of 3)';
+  $('wizBack').style.visibility = wizStep === 1 ? 'hidden' : 'visible';
+  $('wizNext').textContent = wizStep === 3 ? 'Finish' : 'Next';
+}
+function wizClose(done) { if (done) lsSet('carla.wizardDone', '1'); $('wizard').hidden = true; refreshSetupBanner(); }
+
+async function wizInit() {
+  if (!$('wizard') || lsGet('carla.wizardDone') === '1') return;
+  try {
+    const s = await api('/api/setup');
+    if (!s.needs_setup) return;
+    $('wizHw').textContent = '(about ' + s.free_ram_gb + ' GB RAM free' + (s.native_pick ? '; suggested: ' + s.native_pick : '') + ')';
+  } catch (e) { return; }
+  wizShow(1);
+  $('wizard').hidden = false;
+  $('wizBack').onclick = function () { wizShow(wizStep - 1); };
+  $('wizSkip').onclick = function () { wizClose(true); };
+  $('wizNext').onclick = async function () {
+    if (wizStep === 1 && $('wizName').value.trim()) {
+      try { await postJSON('/api/persona/name', { name: $('wizName').value }); } catch (e) { toastLine('✗ ' + e.message); }
+    }
+    if (wizStep === 3) { wizClose(true); return; }
+    wizShow(wizStep + 1);
+  };
+  $('wizInstall').onclick = async function () {
+    $('wizInstall').disabled = true; $('wizEngineMsg').textContent = 'Downloading …';
+    try { const r = await postJSON('/api/engine/install', { backend: $('wizBackend').value }); $('wizEngineMsg').textContent = '✓ ' + r.message; }
+    catch (e) { $('wizEngineMsg').textContent = '✗ ' + e.message; }
+    $('wizInstall').disabled = false;
+  };
+  $('wizAuto').onclick = async function () {
+    $('wizAuto').disabled = true; $('wizModelMsg').textContent = 'Downloading and starting — this can take several minutes …';
+    try { const r = await postJSON('/api/models/auto'); $('wizModelMsg').textContent = '✓ ' + r.model_id + ' is ready'; }
+    catch (e) { $('wizModelMsg').textContent = '✗ ' + e.message; }
+    $('wizAuto').disabled = false;
+  };
+  $('wizManual').onclick = function () { wizClose(true); mmOpen(); mmDeviceInit(); mmEngineRefresh(); };
+}
+document.addEventListener('DOMContentLoaded', function () { setTimeout(wizInit, 900); });

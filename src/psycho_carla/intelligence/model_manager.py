@@ -543,6 +543,55 @@ def delete_native_model(model_id: str) -> DownloadResult:
     )
 
 
+def _download_resumable(url: str, out: Path, progress: ProgressFn,
+                        attempts: int = 5) -> str:
+    """Download ``url`` to ``out`` with resume. Returns an error string, or ``""``.
+
+    Data goes to ``<out>.part`` and is renamed only when the full length has
+    arrived, so a cancelled or crashed download can never look like an
+    installed model. An existing ``.part`` file is continued with an HTTP
+    Range request.
+    """
+    import time as _time
+
+    part = out.with_name(out.name + ".part")
+    if out.exists():
+        return ""
+    last = ""
+    for attempt in range(attempts):
+        have = part.stat().st_size if part.exists() else 0
+        req = urllib.request.Request(url, headers={"User-Agent": "psycho-carla"})
+        if have:
+            req.add_header("Range", f"bytes={have}-")
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                status = getattr(resp, "status", 200)
+                length = int(resp.headers.get("Content-Length") or 0)
+                if have and status != 206:        # server ignored Range: start over
+                    have = 0
+                total = have + length if length else 0
+                mode = "ab" if have else "wb"
+                done = have
+                with open(part, mode) as fh:
+                    while True:
+                        chunk = resp.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        fh.write(chunk)
+                        done += len(chunk)
+                        if total:
+                            progress(out.name, done * 100.0 / total)
+            if total and part.stat().st_size != total:
+                last = f"incomplete ({part.stat().st_size} of {total} bytes)"
+                continue
+            part.replace(out)
+            return ""
+        except Exception as exc:                  # network drop: keep .part, retry
+            last = f"{type(exc).__name__}: {exc}"
+            _time.sleep(min(2 ** attempt, 10))
+    return f"{last} — run the download again to resume"
+
+
 def _hf_download_plain(
     repo: str,
     filename: str | None,
@@ -580,24 +629,9 @@ def _hf_download_plain(
         url = f"https://huggingface.co/{repo}/resolve/main/{name}"
         out = target_dir / Path(name).name
         progress(f"downloading {Path(name).name}", None)
-        try:
-            with urllib.request.urlopen(url, timeout=120) as resp:
-                total = int(resp.headers.get("Content-Length") or 0)
-                done = 0
-                with open(out, "wb") as fh:
-                    while True:
-                        chunk = resp.read(1024 * 256)
-                        if not chunk:
-                            break
-                        fh.write(chunk)
-                        done += len(chunk)
-                        if total:
-                            progress(f"{Path(name).name}", done / total)
-            print()
-        except Exception as exc:
-            return DownloadResult(
-                False, repo, "llamacpp", message=f"download failed: {exc}",
-            )
+        err = _download_resumable(url, out, progress)
+        if err:
+            return DownloadResult(False, repo, "llamacpp", message=f"download failed: {err}")
 
     return DownloadResult(
         True, repo, "llamacpp", path=str(target_dir),
@@ -802,6 +836,9 @@ def delete_local_model(model_id: str, engine: str = "llamacpp") -> DownloadResul
 
     if engine in ("native_onnx", "native", "onnx"):
         return delete_native_model(model_id)
+
+    if engine == "native_gguf":
+        return delete_gguf_model(model_id)
 
     if engine == "ollama":
         return DownloadResult(
@@ -1146,3 +1183,86 @@ def add_cloud_tier(provider: str, model: str, tier: str = "deep_tier",
     note = "" if stored_key() else " — add an API key (Model Manager → Cloud models)"
     return {"ok": True, "tier": tier, "model": model.strip(),
             "message": f"'{tier}' now uses {model.strip()} via OpenRouter{note}"}
+
+
+# ---------------------------------------------------------------------------
+# Partial GGUF downloads, and deleting models
+# ---------------------------------------------------------------------------
+
+def _inside_models_dir(path: Path) -> bool:
+    try:
+        path.resolve().relative_to(models_dir().resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def partial_gguf_downloads() -> list[dict]:
+    """Unfinished GGUF downloads: ``*.part`` files and hub ``*.incomplete`` files."""
+    base = models_dir()
+    found: list[dict] = []
+    for pattern in ("*.part", "*.incomplete"):
+        for path in base.rglob(pattern):
+            try:
+                size_mb = round(path.stat().st_size / (1024 * 1024), 1)
+            except OSError:
+                continue
+            found.append({
+                "id": "file:" + str(path.relative_to(base)).replace("\\", "/"),
+                "name": path.name, "path": str(path), "size_mb": size_mb,
+                "engine": "native_gguf", "partial": True,
+            })
+    return found
+
+
+def delete_partial_gguf(partial_id: str = "") -> dict:
+    """Delete one partial GGUF download (``file:<relative path>``), or all of them."""
+    base = models_dir()
+    targets = [p for p in partial_gguf_downloads()
+               if not partial_id or p["id"] == partial_id]
+    removed, problems = [], []
+    for item in targets:
+        path = Path(item["path"])
+        if not _inside_models_dir(path):
+            problems.append(f"refusing to delete outside the models folder: {path}")
+            continue
+        try:
+            path.unlink()
+            removed.append(item["id"])
+        except OSError as exc:
+            problems.append(f"could not delete {path.name}: {exc}")
+    return {"ok": not problems, "removed": removed,
+            "message": "; ".join(problems) or (f"removed {len(removed)} partial download(s)"
+                                               if removed else "no partial downloads"),
+            "base": str(base)}
+
+
+def delete_gguf_model(model_id: str) -> DownloadResult:
+    """Delete a downloaded GGUF model. Stops the engine first if it is using it."""
+    path = find_gguf(model_id)
+    if path is None:
+        return DownloadResult(False, model_id, "native_gguf", message="no such local model")
+    if not _inside_models_dir(path):
+        return DownloadResult(False, model_id, "native_gguf",
+                              message="refusing to delete a file outside the models directory")
+    try:
+        from .llama_engine import server
+
+        if server.running and server.model_path == str(path):
+            from .model_lifecycle import lifecycle
+
+            lifecycle.stop()
+            server.stop()          # Windows cannot delete a file the engine has open
+    except Exception:
+        pass
+    try:
+        path.unlink()
+        # tidy: hub bookkeeping for that file, and an emptied repo folder
+        meta = path.parent / ".cache" / "huggingface" / "download" / (path.name + ".metadata")
+        meta.unlink(missing_ok=True)
+        if path.parent != models_dir() and not any(path.parent.iterdir()):
+            path.parent.rmdir()
+    except OSError as exc:
+        return DownloadResult(False, model_id, "native_gguf", message=f"could not delete: {exc}")
+    return DownloadResult(True, model_id, "native_gguf", path=str(path),
+                          message=f"deleted {path.name}")

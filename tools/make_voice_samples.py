@@ -21,13 +21,18 @@ OUT = Path(__file__).resolve().parents[1] / "voice_samples"
 PIPER_VOICES = Path.home() / ".local" / "share" / "piper-voices"
 
 # Persona lines actually emitted by core/persona.py.
+import os as _os
+
+#: What the samples call you. Set PSYCHO_NAME=YourName before running the generators.
+NAME = _os.environ.get("PSYCHO_NAME", "Psycho")
+
 LINES: list[tuple[str, str]] = [
-    ("greeting", "C.A.R.L.A. online and at your service, Boss."),
-    ("ack", "On it, Boss."),
-    ("done", "Done, Boss. The answer is 42."),
-    ("failure", "Apologies, Boss. That didn't go to plan."),
-    ("informative", "Right, Boss. The answer is 42."),
-    ("dry_wit", "Sir, the diagnostics are clean. That's almost suspicious."),
+    ("greeting", f"C.A.R.L.A. online and at your service, {NAME}."),
+    ("ack", f"On it, {NAME}."),
+    ("done", f"Done, {NAME}. The answer is 42."),
+    ("failure", f"Apologies, {NAME}. That didn't go to plan."),
+    ("informative", f"Right, {NAME}. The answer is 42."),
+    ("dry_wit", f"{NAME}, the diagnostics are clean. That's almost suspicious."),
     ("terse", "Patch applied. No regressions."),
 ]
 

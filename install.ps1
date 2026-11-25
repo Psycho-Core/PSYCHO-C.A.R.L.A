@@ -11,7 +11,7 @@
     Requires eSpeak NG for Kokoro — see https://github.com/hexgrad/kokoro
 
 .PARAMETER Tier
-    Which model tier to write into the starter config. Defaults to 'ollama'.
+    Provider for fast_tier in the starter config. Defaults to 'native_gguf' (C.A.R.L.A.'s own llama.cpp engine, no Ollama). Others: openrouter, openai_compat.
 
 .PARAMETER Model
     The model identifier for the chosen tier.
@@ -25,7 +25,7 @@
 [CmdletBinding()]
 param(
     [switch]$Voice,
-    [string]$Tier = "ollama",
+    [string]$Tier = "native_gguf",
     [string]$Model = "",
     [string]$PythonVersion = "3.11",
     [string]$InstallDir = ""
@@ -130,8 +130,8 @@ from psycho_carla.config_template import render_default_config
 p = Path(r'$cfgPath')
 p.parent.mkdir(parents=True, exist_ok=True)
 text = render_default_config()
-text = text.replace('provider       = "ollama"\nmodel          = "qwen2.5:7b-instruct"',
-                    'provider       = "$Tier"\nmodel          = "$Model"')
+text = text.replace('provider       = "native_gguf"\nmodel          = ""',
+                    'provider       = "$Tier"\nmodel          = "$Model"', 1)
 p.write_text(text, encoding='utf-8')
 print('wrote', p)
 "@

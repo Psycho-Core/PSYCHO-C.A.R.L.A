@@ -318,3 +318,90 @@ def test_new_api_routes(tmp_path, monkeypatch):
     from psycho_carla.core.config import load_config
 
     assert load_config().voice.tts_voice == "bf_emma"
+
+
+# -- downloads, partials and deletion ----------------------------------------
+class _Resp:
+    def __init__(self, data, status=200):
+        self._d, self.status = data, status
+        self.headers = {"Content-Length": str(len(data))}
+
+    def read(self, n=-1):
+        out, self._d = self._d[:n], self._d[n:]
+        return out
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def test_download_goes_to_part_then_renames(tmp_path, monkeypatch):
+    monkeypatch.setattr(mm.urllib.request, "urlopen", lambda req, timeout=0: _Resp(b"GGUF" + b"x" * 100))
+    out = tmp_path / "m.gguf"
+    assert mm._download_resumable("http://x/m.gguf", out, lambda *a: None) == ""
+    assert out.read_bytes()[:4] == b"GGUF" and not (tmp_path / "m.gguf.part").exists()
+
+
+def test_failed_download_leaves_only_a_part_file_and_resumes(tmp_path, monkeypatch):
+    calls = {"n": 0}
+
+    def flaky(req, timeout=0):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise OSError("connection reset")
+        if req.get_header("Range"):
+            return _Resp(b"y" * 50, status=206)
+        return _Resp(b"x" * 100)
+
+    monkeypatch.setattr(mm.urllib.request, "urlopen", flaky)
+    monkeypatch.setattr("time.sleep", lambda s: None)
+    out = tmp_path / "m.gguf"
+    (tmp_path / "m.gguf.part").write_bytes(b"x" * 50)           # an earlier partial
+    assert mm._download_resumable("http://x/m.gguf", out, lambda *a: None) == ""
+    assert out.stat().st_size == 100                              # 50 kept + 50 resumed
+    # a download that never succeeds must not create the final file
+    monkeypatch.setattr(mm.urllib.request, "urlopen", lambda r, timeout=0: (_ for _ in ()).throw(OSError("down")))
+    out2 = tmp_path / "n.gguf"
+    assert "resume" in mm._download_resumable("http://x/n.gguf", out2, lambda *a: None, attempts=2)
+    assert not out2.exists()
+
+
+def test_partials_are_listed_and_deletable(tmp_path, monkeypatch):
+    monkeypatch.setenv("PSYCHO_CARLA_HOME", str(tmp_path))
+    base = mm.models_dir()
+    (base / "a.gguf.part").write_bytes(b"123")
+    hub = base / ".cache" / "huggingface" / "download"
+    hub.mkdir(parents=True)
+    (hub / "b.gguf.incomplete").write_bytes(b"4567")
+    from psycho_carla.intelligence.model_lifecycle import ModelLifecycle
+
+    lc = ModelLifecycle()
+    ids = {p["id"] for p in lc.partial_downloads()}
+    assert ids == {"file:a.gguf.part", "file:.cache/huggingface/download/b.gguf.incomplete"}
+    assert lc.delete_partial("file:a.gguf.part")["ok"]
+    assert not (base / "a.gguf.part").exists() and (hub / "b.gguf.incomplete").exists()
+    assert lc.delete_partial("")["removed"]                       # clear all
+    assert lc.partial_downloads() == []
+    assert mm.delete_partial_gguf("file:../../etc/passwd")["removed"] == []
+
+
+def test_delete_complete_gguf_and_refuse_outside(tmp_path, monkeypatch):
+    monkeypatch.setenv("PSYCHO_CARLA_HOME", str(tmp_path))
+    f = mm.models_dir() / "repo--x" / "model.Q4_K_M.gguf"
+    f.parent.mkdir(parents=True)
+    f.write_bytes(b"GGUF")
+    assert mm.delete_local_model("model.Q4_K_M", "native_gguf").ok
+    assert not f.exists() and not f.parent.exists()               # tidy empty folder
+    assert mm.delete_local_model("model.Q4_K_M", "native_gguf").ok is False
+
+
+def test_delete_stops_the_engine_first(fake_engine, tmp_path, monkeypatch):
+    exe, model = fake_engine
+    monkeypatch.setenv("PSYCHO_CARLA_HOME", str(tmp_path / "home"))
+    target = mm.models_dir() / "running.gguf"
+    target.write_bytes(model.read_bytes())
+    assert le.server.start(str(target), device="cpu", timeout=30)["ok"]
+    assert mm.delete_local_model("running", "native_gguf").ok
+    assert not le.server.running and not target.exists()

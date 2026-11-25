@@ -455,7 +455,7 @@ class SecurityConfig:
     secret_scanner: bool = True
     pii_scanner: bool = True
     audit_log_path: str = ""
-    enforce_tool_confirmation: bool = False
+    enforce_tool_confirmation: bool = True   # safe mode: risky tools wait for your approval
     merkle_audit: bool = False
     signing_key_path: str = ""
     ssrf_protection: bool = True
@@ -908,6 +908,21 @@ def load_config(path: str | Path | None = None) -> CarlaConfig:
     with cfg_path.open("rb") as fh:
         data = tomllib.load(fh)
     return config_from_dict(data, cfg_path)
+
+
+def ensure_config(path: str | Path | None = None) -> Path:
+    """Write the starter config if there is none yet (first launch of the app).
+
+    Someone who double-clicks the .exe never runs ``carla init``; without this
+    they would start with no model tiers at all. An existing file is never touched.
+    """
+    from ..config_template import render_default_config
+
+    cfg_path = Path(path).expanduser() if path else default_config_path()
+    if not cfg_path.exists():
+        cfg_path.parent.mkdir(parents=True, exist_ok=True)
+        cfg_path.write_text(render_default_config(), encoding="utf-8")
+    return cfg_path
 
 
 def save_config(cfg: CarlaConfig, path: str | Path | None = None) -> Path:

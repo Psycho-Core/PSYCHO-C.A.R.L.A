@@ -15,11 +15,10 @@ Notes
 * The core application never imports torch — only ``voice/stt.py`` does.
   Set ``CARLA_BUILD_VOICE=1`` to include the voice stack; otherwise it is
   excluded and the bundle stays small.
-* ``CARLA_BUILD_NATIVE=1`` includes the in-process CPU engine
-  (onnxruntime + transformers). This is what lets the app run a model
-  with no Ollama and no external server. It is on by default because
-  it is central to the product — the voice stack is what stays opt-in,
-  since it drags in torch.
+* The main engine is llama.cpp, which C.A.R.L.A. downloads and runs itself
+  (``intelligence/llama_engine.py``) — nothing to bundle. ``CARLA_BUILD_NATIVE=1``
+  additionally bundles the tiny in-process ONNX engine (onnxruntime +
+  transformers); it is OFF by default to keep the download small.
 * Models are NEVER bundled. They live in ``%USERPROFILE%\\.psycho_carla\\models``
   and are downloaded at runtime.
 """
@@ -32,11 +31,9 @@ import os
 WITH_VOICE = os.environ.get("CARLA_BUILD_VOICE", "0") not in ("0", "", "false")
 
 # ---------------------------------------------------------------------------
-# The in-process CPU engine. On by default — it is the zero-setup path,
-# and without it the app can only talk to an engine the user installs
-# separately.
+# The tiny in-process ONNX engine. Off by default (see the notes above).
 # ---------------------------------------------------------------------------
-WITH_NATIVE = os.environ.get("CARLA_BUILD_NATIVE", "1") not in ("0", "", "false")
+WITH_NATIVE = os.environ.get("CARLA_BUILD_NATIVE", "0") not in ("0", "", "false")
 
 block_cipher = None
 
@@ -102,6 +99,11 @@ hiddenimports = [
     "psycho_carla.server.api.channels",
     "psycho_carla.providers.adapters",
     "psycho_carla.providers.adapters.native_onnx",
+    "psycho_carla.providers.adapters.native_gguf",
+    "psycho_carla.providers.adapters.openrouter",
+    "psycho_carla.intelligence.llama_engine",
+    "psycho_carla.security.vault",
+    "cryptography.hazmat.primitives.ciphers.aead",
     "psycho_carla.channels",
     "psycho_carla.channels.slack_daemon",
     "psycho_carla.agents.builtin",
@@ -125,7 +127,7 @@ if WITH_NATIVE:
     ]
 
 a = Analysis(
-    ["src/psycho_carla/desktop.py"],
+    ["packaging/carla_app.py"],
     pathex=["src"],
     binaries=[],
     datas=datas,

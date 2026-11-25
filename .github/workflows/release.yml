@@ -98,6 +98,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { $exists = $false }
           if ($exists) {
             gh release upload $env:TAG PsychoCARLA-windows-x64.zip PsychoCARLA-windows-x64.zip.sha256 --clobber
+            gh release edit $env:TAG --notes "$notes" --title "PSYCHO-C.A.R.L.A. $env:TAG (Windows)"
           } else {
             gh release create $env:TAG PsychoCARLA-windows-x64.zip PsychoCARLA-windows-x64.zip.sha256 --title "PSYCHO-C.A.R.L.A. $env:TAG (Windows)" --notes "$notes" --prerelease --target $env:GITHUB_SHA
           }

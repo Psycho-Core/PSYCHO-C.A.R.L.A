@@ -36,7 +36,7 @@ from psycho_carla.providers.router import ModelRouter
 # --------------------------------------------------------------------------- #
 @pytest.fixture()
 def tmp_home(monkeypatch):
-    with tempfile.TemporaryDirectory() as td:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
         monkeypatch.setenv("PSYCHO_CARLA_HOME", td)
         yield Path(td)
 
@@ -805,7 +805,7 @@ class TestEnergyTelemetry:
         import tempfile, os
         from psycho_carla.core.telemetry import Telemetry, RequestMetric
 
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             tel = Telemetry(os.path.join(d, "t.db"), track_energy=True)
             tel.sample_now()
             metric = RequestMetric(
@@ -831,7 +831,7 @@ class TestEnergyTelemetry:
         import tempfile, os, sqlite3
         from psycho_carla.core.telemetry import Telemetry
 
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             db = os.path.join(d, "t.db")
             tel = Telemetry(db, track_energy=True)
             tel.sample_now()
@@ -903,7 +903,7 @@ class TestLearningSurfaces:
     def test_tool_selection_optimizer_keeps_good_drops_bad(self):
         from psycho_carla.learning.surfaces import ToolSelectionOptimizer
 
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             logger = self._traces(d)
             policies = ToolSelectionOptimizer(logger).optimize_tool_selection(
                 agent="coder"
@@ -917,7 +917,7 @@ class TestLearningSurfaces:
     def test_engine_spec_optimizer_proposes_config(self):
         from psycho_carla.learning.surfaces import EngineSpecOptimizer
 
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             logger = self._traces(d)
             specs = EngineSpecOptimizer(logger).optimize_engine_spec()
             assert "fast_tier" in specs
@@ -1059,7 +1059,7 @@ class TestBenchEval:
                 "weight": 2.0,
             }],
         }
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             path = os.path.join(d, "eval.json")
             with open(path, "w", encoding="utf-8") as fh:
                 json.dump(payload, fh)
@@ -1106,7 +1106,7 @@ class TestSkillsCatalog:
     def test_parses_valid_skill(self):
         from psycho_carla.skills import parse_skill
 
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             folder = os.path.join(d, "pdf-processing")
             os.makedirs(folder)
             with open(os.path.join(folder, "SKILL.md"), "w", encoding="utf-8") as fh:
@@ -1136,7 +1136,7 @@ class TestSkillsCatalog:
     def test_rejects_invalid_name(self):
         from psycho_carla.skills import parse_skill
 
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             folder = os.path.join(d, "Bad_Name")
             os.makedirs(folder)
             with open(os.path.join(folder, "SKILL.md"), "w", encoding="utf-8") as fh:
@@ -1148,7 +1148,7 @@ class TestSkillsCatalog:
     def test_rejects_folder_name_mismatch(self):
         from psycho_carla.skills import parse_skill
 
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             folder = os.path.join(d, "other-folder")
             os.makedirs(folder)
             with open(os.path.join(folder, "SKILL.md"), "w", encoding="utf-8") as fh:
@@ -1159,7 +1159,7 @@ class TestSkillsCatalog:
     def test_rejects_angle_brackets(self):
         from psycho_carla.skills import parse_skill
 
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             folder = os.path.join(d, "inject-skill")
             os.makedirs(folder)
             with open(os.path.join(folder, "SKILL.md"), "w", encoding="utf-8") as fh:
@@ -1173,7 +1173,7 @@ class TestSkillsCatalog:
     def test_rejects_missing_description(self):
         from psycho_carla.skills import parse_skill
 
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             folder = os.path.join(d, "no-desc")
             os.makedirs(folder)
             with open(os.path.join(folder, "SKILL.md"), "w", encoding="utf-8") as fh:
@@ -1184,7 +1184,7 @@ class TestSkillsCatalog:
     def test_store_install_list_uninstall(self):
         from psycho_carla.skills import SkillStore
 
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             src = os.path.join(d, "src", "my-skill")
             os.makedirs(src)
             with open(os.path.join(src, "SKILL.md"), "w", encoding="utf-8") as fh:
@@ -1211,7 +1211,7 @@ class TestSkillsCatalog:
     def test_store_rejects_noncompliant_skill(self):
         from psycho_carla.skills import SkillStore
 
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as d:
             src = os.path.join(d, "Bad_Name")
             os.makedirs(src)
             with open(os.path.join(src, "SKILL.md"), "w", encoding="utf-8") as fh:

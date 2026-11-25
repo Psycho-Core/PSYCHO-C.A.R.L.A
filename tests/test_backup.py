@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import sqlite3
+from contextlib import closing
 import zipfile
 
 import pytest
@@ -16,11 +17,10 @@ def home(tmp_path):
     (h / "skills" / "mine").mkdir(parents=True)
     (h / "psycho_carla.toml").write_text("[persona]\nuser_name='X'\n")
     (h / "skills" / "mine" / "SKILL.md").write_text("# s")
-    con = sqlite3.connect(h / "data" / "memory.db")
-    con.execute("create table t(v)")
-    con.execute("insert into t values ('remember me')")
-    con.commit()
-    con.close()
+    with closing(sqlite3.connect(h / "data" / "memory.db")) as con:
+        con.execute("create table t(v)")
+        con.execute("insert into t values ('remember me')")
+        con.commit()
     (h / "models").mkdir()
     (h / "models" / "big.gguf").write_bytes(b"GGUF")
     (h / "vault.enc").write_bytes(b"secret")
@@ -41,12 +41,14 @@ def test_backup_contains_yours_not_models_or_vault(home):
 def test_restore_round_trip_keeps_old_state_aside(home, tmp_path):
     blob = create_backup(home)
     (home / "psycho_carla.toml").write_text("changed")
-    with sqlite3.connect(home / "data" / "memory.db") as con:
+    with closing(sqlite3.connect(home / "data" / "memory.db")) as con:
         con.execute("delete from t")
+        con.commit()
     r = restore_backup(home, blob)
     assert r["ok"] and r["restored"] >= 3
     assert "user_name" in (home / "psycho_carla.toml").read_text()
-    assert sqlite3.connect(home / "data" / "memory.db").execute("select v from t").fetchone()[0] == "remember me"
+    with closing(sqlite3.connect(home / "data" / "memory.db")) as con:
+        assert con.execute("select v from t").fetchone()[0] == "remember me"
     assert (tmp_path / "home" / "backups").exists() and r["previous_state"]
 
 
@@ -130,3 +132,24 @@ def test_cli_survives_a_legacy_windows_console_encoding(tmp_path):
     r = subprocess.run([sys.executable, "-m", "psycho_carla.cli.main", "init", "--force"],
                        env=env, capture_output=True, timeout=60)
     assert r.returncode == 0, r.stderr.decode("utf-8", "replace")[-300:]
+
+
+def test_restore_reports_files_in_use_and_rolls_back(home, monkeypatch):
+    """On Windows a running C.A.R.L.A. holds its databases open."""
+    import shutil
+
+    blob = create_backup(home)
+    (home / "psycho_carla.toml").write_text("keep me")
+    real_move = shutil.move
+    calls = {"n": 0}
+
+    def locked(src, dst):
+        calls["n"] += 1
+        if str(src).endswith("memory.db"):
+            raise PermissionError("file in use")
+        return real_move(src, dst)
+
+    monkeypatch.setattr("psycho_carla.core.backup.shutil.move", locked)
+    r = restore_backup(home, blob)
+    assert r["ok"] is False and "in use" in r["message"]
+    assert (home / "psycho_carla.toml").read_text() == "keep me"      # rolled back

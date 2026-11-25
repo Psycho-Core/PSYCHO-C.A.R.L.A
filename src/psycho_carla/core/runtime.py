@@ -389,6 +389,14 @@ class CarlaRuntime:
         self.telemetry.stop()
         self.memory.close()
         self.traces.close()
+        # Release the remaining database files too — Windows will not let a
+        # backup restore or a delete touch a file that is still open.
+        for store in (self.knowledge, self.sessions):
+            try:
+                if store is not None:
+                    store.close()
+            except Exception:
+                pass
         self._started = False
         self.emit("runtime_stopped", {})
 

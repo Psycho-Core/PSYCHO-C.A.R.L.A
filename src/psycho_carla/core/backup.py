@@ -106,15 +106,30 @@ def restore_backup(home: str | Path, data: bytes) -> dict:
         if home != target and home not in target.parents:
             return {"ok": False, "message": f"unsafe path in backup: {n}"}
     stash = home / "backups" / f"pre-restore-{time.strftime('%Y%m%d-%H%M%S')}"
+    todo = [n for n in safe if n != "BACKUP.txt"]
+    moved: list[tuple[Path, Path]] = []
+    try:
+        # Step 1: put every file we are about to replace aside. If one is locked
+        # (Windows keeps a running app's databases open) nothing is changed.
+        for n in todo:
+            target = home / n
+            if target.exists():
+                keep = stash / n
+                keep.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(target), keep)
+                moved.append((target, keep))
+    except OSError as exc:
+        for target, keep in reversed(moved):
+            try:
+                shutil.move(str(keep), target)
+            except OSError:
+                pass
+        return {"ok": False, "message": (
+            f"a file is in use ({exc}) — close C.A.R.L.A. completely and run "
+            "`carla restore <file>` from a terminal"), "previous_state": ""}
     restored = 0
-    for n in safe:
-        if n == "BACKUP.txt":
-            continue
+    for n in todo:
         target = home / n
-        if target.exists():
-            keep = stash / n
-            keep.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(target), keep)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(zf.read(n))
         restored += 1

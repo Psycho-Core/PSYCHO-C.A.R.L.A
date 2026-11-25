@@ -64,7 +64,9 @@ def test_denied_request_never_runs(rt, tmp_path):
 def test_run_tool_cannot_bypass_the_gate(rt, tmp_path):
     from psycho_carla.tools.builtin.runtime_tools import run_tool
 
-    out = run_tool("file_write", '{"path": "%s", "content": "x"}' % (tmp_path / "b.txt"))
+    import json
+
+    out = run_tool("file_write", json.dumps({"path": str(tmp_path / "b.txt"), "content": "x"}))
     assert "NOT run" in out and not (tmp_path / "b.txt").exists()
 
 

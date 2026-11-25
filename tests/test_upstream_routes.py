@@ -20,7 +20,7 @@ from psycho_carla.server.app import create_app  # noqa: E402
 def client(monkeypatch):
     from fastapi.testclient import TestClient
 
-    with tempfile.TemporaryDirectory() as td:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as td:
         monkeypatch.setenv("PSYCHO_CARLA_HOME", td)
         cfg = config_from_dict(
             {

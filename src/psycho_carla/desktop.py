@@ -50,6 +50,25 @@ def log_path() -> "os.PathLike[str]":
     return d / "desktop.log"
 
 
+def ensure_std_streams() -> None:
+    """Give a windowed (no-console) exe real ``stdout``/``stderr`` objects.
+
+    PyInstaller's ``console=False`` build starts with ``sys.stdout`` and
+    ``sys.stderr`` set to ``None``; uvicorn's logging setup calls
+    ``sys.stdout.isatty()`` and the server then never starts. Output is
+    discarded; anything written to stderr goes to the desktop log instead.
+    """
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")
+    if sys.stderr is None:
+        try:
+            sys.stderr = open(log_path(), "a", encoding="utf-8", buffering=1)
+        except Exception:
+            sys.stderr = open(os.devnull, "w", encoding="utf-8")
+    if sys.stdin is None:
+        sys.stdin = open(os.devnull, "r", encoding="utf-8")
+
+
 def _log(message: str) -> None:
     try:
         with open(log_path(), "a", encoding="utf-8") as fh:
@@ -542,6 +561,7 @@ class DesktopApp:
 
 def main(argv: list[str] | None = None) -> int:
     """Entry point for the frozen executable."""
+    ensure_std_streams()
     argv = list(sys.argv[1:] if argv is None else argv)
 
     host = os.environ.get("CARLA_HOST", DEFAULT_HOST)

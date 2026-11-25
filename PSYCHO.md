@@ -17,7 +17,7 @@ running, via the built-in offline fallback.
 ## Where it stands (verified 2026-11-13)
 
 - ✅ Code complete — nothing half-built
-- ✅ **475 automated tests pass**, **46/46 end-to-end checks pass**
+- ✅ **477 automated tests pass**, **46/46 end-to-end checks pass**
 - ✅ Rename to PSYCHO-C.A.R.L.A. fully applied and audited
   (`docs/audits/NAME-CHANGE-AUDIT.md`)
 - ✅ “What she calls you” setting audited (`docs/audits/USER-NAME-AUDIT.md`)
@@ -81,7 +81,7 @@ user_name = ""       # what she calls you — blank means "Psycho"
 1. Read this file, then `CLAUDE.md`.
 2. `pip install -e .` → `carla doctor` → `carla serve`.
 3. Run `python -m pytest tests/ -q` to confirm everything is still green
-   (expect 475 passing).
+   (expect 477 passing).
 4. Any AI assistant can take over from `CLAUDE.md` — it has the full map,
    the traps, and your settled preferences (your name, the locked product
    name, original-code-only).

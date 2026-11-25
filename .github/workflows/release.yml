@@ -30,7 +30,7 @@ jobs:
           cache: pip
 
       - name: Install
-        run: pip install -e ".[packaging,desktop]"
+        run: pip install -e ".[packaging,desktop,native]"   # native only for the tests; the spec leaves it out of the exe
 
       - name: Tests
         run: |

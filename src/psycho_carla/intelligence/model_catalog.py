@@ -133,10 +133,10 @@ class ModelSpec:
 # ---------------------------------------------------------------------------
 
 #: GGUF models that C.A.R.L.A. runs itself through its managed llama.cpp
-#: engine (no Ollama). Repos were found by web search on 2026-11-25; file
-#: names follow each uploader's convention and have NOT been fetched from
-#: this sandbox, so ``verified`` is False — if a download says "file not
-#: found", use Custom model with the exact file name from the repo page.
+#: engine (no Ollama). Every repo/file below was confirmed to exist (with the
+#: size shown) by ``tools/check_catalog.py`` on 2026-11-25; the 1.5B model was
+#: also downloaded and run end to end on Windows. Re-run the check any time:
+#: Actions -> "Engine check" -> Run workflow.
 def _gguf(model_id, name, params, repo, file, size, ram, vram, desc, lic,
           uncensored=False, target="main-pc", ctx=32768):
     return ModelSpec(
@@ -144,7 +144,7 @@ def _gguf(model_id, name, params, repo, file, size, ram, vram, desc, lic,
         context_length=ctx, supported_engines=("native_gguf", "llamacpp"),
         provider="huggingface", description=desc, hf_repo=repo, gguf_file=file,
         quantisation="Q4_K_M", size_gb=size, ram_gb=ram, vram_gb=vram, license=lic,
-        metadata={"uncensored": uncensored, "verified": False, "target": target},
+        metadata={"uncensored": uncensored, "verified": True, "target": target},
     )
 
 

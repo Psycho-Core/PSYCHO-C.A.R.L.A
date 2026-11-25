@@ -144,6 +144,7 @@ def test_gguf_catalog_targets_the_hardware():
     assert {"gguf:qwen2.5-coder-14b-uncensored", "gguf:qwen2.5-coder-32b-uncensored",
             "gguf:llama-3.2-3b-uncensored"} <= ids
     assert all(m.hf_repo and m.gguf_file.endswith(".gguf") for m in GGUF_MODELS)
+    assert all(m.metadata["verified"] for m in GGUF_MODELS)       # tools/check_catalog.py, 2026-11-25
     assert {m.model_id for m in list_models(engine="native_gguf")} == ids
     # An 8 GB OptiPlex: the 3B uncensored model fits, the 14B does not.
     optiplex = mm.best_gguf_model(free_ram_gb=6.5, prefer_uncensored=True)

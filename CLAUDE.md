@@ -21,7 +21,7 @@ Key facts, all verified 2026-11-13 (today):
   `docs/audits/NAME-CHANGE-AUDIT.md`. The only “Friday” left in the source is the
   weekday in one example doc — that is correct English, leave it.
 - Status: **feature/settings parity with upstream is complete.**
-  477 pytest tests pass (476 + 1 skip); end-to-end smoke is 46/46. See `docs/audits/USER-NAME-AUDIT.md`
+  479 pytest tests pass (478 + 1 skip); end-to-end smoke is 46/46. See `docs/audits/USER-NAME-AUDIT.md`
   for the most recent feature audit.
 - Not yet done (owner-side): the Windows `.exe` has never been built in this
   Linux sandbox — `PsychoCARLA.spec` + `install.ps1` are ready and must be
@@ -61,7 +61,7 @@ Key facts, all verified 2026-11-13 (today):
 | `src/psycho_carla/skills/` | 20 bundled skills, executor, sources |
 | `src/psycho_carla/bench/` | eval suites/scorers; CLI `eval --suite/--compare` |
 | `src/psycho_carla/security/`, `sandbox/`, `memory/`, `learning/`, `workflow/`, `a2a/`, `daemon/`, `mining/`, `analytics/` | supporting subsystems, all implemented |
-| `tests/` | pytest suite (477) + `tests/e2e_smoke.py` (46 checks) |
+| `tests/` | pytest suite (479) + `tests/e2e_smoke.py` (46 checks) |
 | `docs/` | `MODELS.md`, `FEATURES.md`, `ARCHITECTURE.md`, `REFERENCE.md` (long README); history in `docs/audits/` |
 | `PsychoCARLA.spec`, `install.ps1` | Windows packaging (PyInstaller onedir; installer) |
 | `voice_samples/`, `examples/`, `tools/` | samples, example workflows/skills, HUD exporter + sample generators |
@@ -76,7 +76,7 @@ pip install -e .                       # Python ≥3.10 (3.11 recommended)
 carla init                             # writes psycho_carla.toml
 carla doctor                           # environment check — expect “Ready”
 carla serve                            # HUD + API on http://127.0.0.1:8787
-python -m pytest tests/ -q             # 477 tests, expect exit 0
+python -m pytest tests/ -q             # 479 tests, expect exit 0
 ```
 
 End-to-end smoke (needs a configured channel or the bridge is disabled):
@@ -107,8 +107,11 @@ pyinstaller PsychoCARLA.spec           # → dist/PsychoCARLA/PsychoCARLA.exe
 - **Default engine is `native_gguf`** (managed llama.cpp child process); Ollama is
   optional/legacy and absent from the starter config. The real `llama-server`
   binary has never been run in the sandbox (GitHub unreachable) — tests use a
-  fake server script. GGUF catalog repos came from web search; file names are
-  inferred (`metadata.verified = False`).
+  fake server script locally, but the **Engine check** workflow (Actions tab) has run the
+  real thing on Windows: it installed llama.cpp, downloaded Qwen2.5-Coder 1.5B and got an
+  answer. All 7 GGUF catalog files were confirmed to exist (`tools/check_catalog.py`).
+  llama.cpp's `releases/latest` is a marker with no binaries — the installer scans
+  recent releases instead.
 - Wake word default is `transcript` (STT-based). openWakeWord needs a custom model.
 
 - The router and the Model Manager share **one** native engine per

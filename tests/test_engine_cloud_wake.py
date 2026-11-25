@@ -405,3 +405,16 @@ def test_delete_stops_the_engine_first(fake_engine, tmp_path, monkeypatch):
     assert le.server.start(str(target), device="cpu", timeout=30)["ok"]
     assert mm.delete_local_model("running", "native_gguf").ok
     assert not le.server.running and not target.exists()
+
+
+def test_marker_release_without_binaries_is_skipped():
+    """Real GitHub: llama.cpp's /releases/latest held only 'nightly-tag.txt'."""
+    releases = [
+        {"tag_name": "v1.0.0", "assets": [{"name": "nightly-tag.txt"}]},
+        {"tag_name": "b9001", "draft": True, "assets": ASSETS},
+        {"tag_name": "b9000", "assets": ASSETS},
+    ]
+    rel, asset = le.find_release_asset(releases, "cpu", "windows")
+    assert rel["tag_name"] == "b9000" and "win-cpu" in asset["name"]
+    assert le.find_release_asset(releases[:1], "cpu", "windows") == (None, None)
+    assert "nightly-tag.txt" in le.describe_releases(releases)

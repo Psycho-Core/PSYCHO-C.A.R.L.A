@@ -1,0 +1,46 @@
+name: Engine check (real download + real model)
+
+# Proves the headline claim on a real Windows machine with internet: C.A.R.L.A. can
+# download the llama.cpp engine, download a model, run it and get an answer back.
+# Run it from the Actions tab. Uses the smallest catalog model (about 1 GB).
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Catalog model id"
+        required: true
+        default: "gguf:qwen2.5-coder-1.5b"
+      backend:
+        description: "Engine backend (cpu, vulkan, hip)"
+        required: true
+        default: "cpu"
+
+jobs:
+  check:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      PYTHONUTF8: "1"
+      PSYCHO_CARLA_HOME: ${{ github.workspace }}\carla-home
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e .
+      - run: carla init
+
+      - name: Install the llama.cpp engine (downloads the official release)
+        run: carla engine install --backend ${{ github.event.inputs.backend }}
+
+      - name: Download the model
+        run: carla model pull ${{ github.event.inputs.model }} --engine native_gguf
+
+      - name: Activate, start, and ask a question
+        shell: pwsh
+        run: |
+          python -c "from psycho_carla.intelligence.model_manager import activate_gguf_model; r = activate_gguf_model('${{ github.event.inputs.model }}', 'fast_tier'); print(r); raise SystemExit(0 if r['ok'] else 1)"
+          carla ask "Reply with exactly five words about the sea."
+          python -c "from psycho_carla.intelligence.llama_engine import server; print('server running:', server.running)"

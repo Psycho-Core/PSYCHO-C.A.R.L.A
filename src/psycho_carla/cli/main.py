@@ -2730,8 +2730,8 @@ def build_parser() -> argparse.ArgumentParser:
     mdli.add_argument("model_id", help="e.g. qwen3:4b")
     mdlp = mdlsub.add_parser("pull", help="Download a model")
     mdlp.add_argument("model_id", help="e.g. qwen3:4b")
-    mdlp.add_argument("--engine", default="ollama",
-                      help="ollama | llamacpp | native_onnx | vllm | sglang")
+    mdlp.add_argument("--engine", default="native_gguf",
+                      help="native_gguf (default) | native_onnx | llamacpp | ollama | vllm | sglang")
     mdlr = mdlsub.add_parser("recommend",
                              help="Suggest models for this machine")
     mdlr.add_argument("--limit", type=int, default=5)

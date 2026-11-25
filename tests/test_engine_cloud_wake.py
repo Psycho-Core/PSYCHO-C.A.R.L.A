@@ -144,6 +144,7 @@ def test_gguf_catalog_targets_the_hardware():
     assert {"gguf:qwen2.5-coder-14b-uncensored", "gguf:qwen2.5-coder-32b-uncensored",
             "gguf:llama-3.2-3b-uncensored"} <= ids
     assert all(m.hf_repo and m.gguf_file.endswith(".gguf") for m in GGUF_MODELS)
+    assert all(m.metadata["verified"] for m in GGUF_MODELS)       # tools/check_catalog.py, 2026-11-25
     assert {m.model_id for m in list_models(engine="native_gguf")} == ids
     # An 8 GB OptiPlex: the 3B uncensored model fits, the 14B does not.
     optiplex = mm.best_gguf_model(free_ram_gb=6.5, prefer_uncensored=True)
@@ -405,3 +406,25 @@ def test_delete_stops_the_engine_first(fake_engine, tmp_path, monkeypatch):
     assert le.server.start(str(target), device="cpu", timeout=30)["ok"]
     assert mm.delete_local_model("running", "native_gguf").ok
     assert not le.server.running and not target.exists()
+
+
+def test_marker_release_without_binaries_is_skipped():
+    """Real GitHub: llama.cpp's /releases/latest held only 'nightly-tag.txt'."""
+    releases = [
+        {"tag_name": "v1.0.0", "assets": [{"name": "nightly-tag.txt"}]},
+        {"tag_name": "b9001", "draft": True, "assets": ASSETS},
+        {"tag_name": "b9000", "assets": ASSETS},
+    ]
+    rel, asset = le.find_release_asset(releases, "cpu", "windows")
+    assert rel["tag_name"] == "b9000" and "win-cpu" in asset["name"]
+    assert le.find_release_asset(releases[:1], "cpu", "windows") == (None, None)
+    assert "nightly-tag.txt" in le.describe_releases(releases)
+
+
+def test_download_progress_is_a_fraction_and_not_spammy(tmp_path, monkeypatch):
+    """The CLI multiplies by 100; the first real run printed '9844.6%'."""
+    monkeypatch.setattr(mm.urllib.request, "urlopen", lambda req, timeout=0: _Resp(b"x" * 5_000_000))
+    seen = []
+    mm._download_resumable("http://x/m.gguf", tmp_path / "m.gguf", lambda m, p=None: seen.append(p))
+    assert seen and all(0.0 <= p <= 1.0 for p in seen) and seen[-1] == 1.0
+    assert len(seen) <= 101

@@ -33,7 +33,7 @@ from typing import Any
 
 logger = logging.getLogger("psycho_carla.llama_engine")
 
-RELEASES_API = "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest"
+RELEASES_API = "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=30"
 BACKENDS = ("vulkan", "cpu", "hip")
 
 ProgressFn = Callable[[str, float | None], None]
@@ -119,6 +119,35 @@ def pick_asset(
     return best
 
 
+def find_release_asset(
+    releases: Sequence[dict[str, Any]], backend: str, system: str = ""
+) -> tuple[dict[str, Any], dict[str, Any]] | tuple[None, None]:
+    """The newest non-draft release that has a build for this OS/backend.
+
+    GitHub's ``/releases/latest`` can point at a marker release with no
+    binaries (llama.cpp's currently holds only ``nightly-tag.txt``), so the
+    list is scanned newest-first instead.
+    """
+    for rel in releases:
+        if rel.get("draft"):
+            continue
+        asset = pick_asset(rel.get("assets", []) or [], backend, system)
+        if asset is not None:
+            return rel, asset
+    return None, None
+
+
+def describe_releases(releases: Any, limit: int = 3) -> str:
+    """A short summary of what was seen, for error messages."""
+    if not isinstance(releases, list):
+        return "unexpected response from GitHub: " + str(releases)[:120]
+    parts = []
+    for rel in releases[:limit]:
+        names = [str(a.get("name", "")) for a in (rel.get("assets") or [])][:4]
+        parts.append(f"{rel.get('tag_name', '?')}: {names}")
+    return "; ".join(parts) or "none"
+
+
 def _safe_extract(archive: Path, dest: Path) -> None:
     """Extract a zip, refusing any member that escapes ``dest`` (zip-slip)."""
     dest = dest.resolve()
@@ -140,12 +169,14 @@ def install_engine(backend: str = "vulkan", progress: ProgressFn | None = None) 
         import httpx
 
         progress("looking up the latest llama.cpp release", None)
-        rel = httpx.get(RELEASES_API, timeout=20.0,
-                        headers={"Accept": "application/vnd.github+json"}).json()
-        asset = pick_asset(rel.get("assets", []), backend)
+        releases = httpx.get(RELEASES_API, timeout=20.0, follow_redirects=True,
+                             headers={"Accept": "application/vnd.github+json",
+                                      "User-Agent": "psycho-carla"}).json()
+        rel, asset = find_release_asset(releases if isinstance(releases, list) else [], backend)
         if asset is None:
             return {"ok": False, "message": (
-                f"no '{backend}' build for this OS in release {rel.get('tag_name', '?')}. "
+                f"no '{backend}' build for this OS found in the {len(releases) if isinstance(releases, list) else 0} "
+                f"newest llama.cpp releases ({describe_releases(releases)}). "
                 "Download llama-server yourself and set PSYCHO_CARLA_LLAMA_SERVER.")}
         tag = str(rel.get("tag_name", "latest"))
         folder = engines_dir() / f"{tag}-{backend}-"

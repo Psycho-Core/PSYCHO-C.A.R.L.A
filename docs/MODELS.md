@@ -37,10 +37,11 @@ memory shuts it down. GPU layers are chosen from model size (a 32B model on a
 | Qwen2.5-Coder 14B (official / **abliterated**) | 9 GB | 16 GB GPU fits fully |
 | **Qwen2.5-Coder 32B abliterated** | 19.9 GB | 16 GB GPU + 32 GB RAM, partial offload |
 
-Repos were found by web search (2026-11-25); exact file names follow each
-uploader's convention and were not fetched from the build sandbox. If a
-download reports "file not found", copy the file name from the repo page into
-**Custom model**. "Abliterated" = refusals removed by editing the weights;
+All seven repos and files were confirmed to exist on 2026-11-25 (sizes match;
+run the *Engine check* workflow to re-verify), and the 1.5B model was
+downloaded and answered a question on a real Windows machine through the
+built-in engine. The 14B and 32B models were confirmed to exist but have not been
+run by us. If a file ever disappears, use **Custom model** with the new name. "Abliterated" = refusals removed by editing the weights;
 check each model's licence and card.
 
 **Ajax (PewDiePie):** a Qwen3.5-9B fine-tune. As of the last reports there

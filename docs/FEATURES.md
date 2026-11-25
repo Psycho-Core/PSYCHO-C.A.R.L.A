@@ -43,7 +43,8 @@ smoke suite is 46/46 (see `docs/audits/PARITY-AUDIT-7.md`,
   child process — no Ollama. Backends: Vulkan (any GPU), CPU, HIP.
   GGUF catalog tuned for an 8 GB PC (3B uncensored) and a 16 GB-GPU PC
   (Qwen2.5-Coder 14B / 32B, official and abliterated).
-  Verified with a fake llama-server in tests; not yet with the real binary.
+  Verified end to end on Windows (real llama.cpp download + Qwen2.5-Coder 1.5B answering);
+  the 14B/32B files were confirmed to exist but not run.
 - **OpenRouter** cloud models (free and paid); key kept in the encrypted vault.
 - Model Manager (HUD + CLI): download / start / stop / delete, **custom model**
   (any Ollama tag or Hugging Face repo), **free memory**, **auto-pick** by free

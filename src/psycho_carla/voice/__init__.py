@@ -3,6 +3,7 @@
 from .stt import (
     BargeIn,
     Microphone,
+    TranscriptWakeDetector,
     WakeEvent,
     WakeWordDetector,
     build_stt,
@@ -20,6 +21,7 @@ from .voice import VoiceState, VoiceSystem
 __all__ = [
     "BargeIn",
     "Microphone",
+    "TranscriptWakeDetector",
     "WakeEvent",
     "WakeWordDetector",
     "build_stt",

@@ -35,12 +35,12 @@ The router converts a **capability tier alias** into a concrete
 
 ```toml
 [tiers.fast_tier]
-provider = "ollama"
-model    = "qwen2.5:7b-instruct"
+provider = "native_gguf"
+model    = "gguf:llama-3.2-3b-uncensored"
 ```
 
-An agent says `tier="fast_tier"`. It never learns that this means Ollama, or
-Qwen, or 7B. Swap it:
+An agent says `tier="fast_tier"`. It never learns that this means the built-in llama.cpp engine, or
+Llama, or 3B. Swap it:
 
 ```toml
 [tiers.fast_tier]
@@ -314,7 +314,7 @@ single sentence so it reads as speech, not as prose being read aloud.
                     └──────────────┘
 ```
 
-- **Wake word** (`openWakeWord`): ONNX, offline, tiny. Detects "hey carla".
+- **Wake word**: transcript-based by default (speech recogniser listens for "hey carla"); openWakeWord optional with a custom model. See `docs/VOICE.md`.
 - **STT** (`faster-whisper`): CTranslate2, `int8` on CPU.
 - **TTS** (Kokoro / Piper): both CPU-only, both with Irish voice options.
 - **Barge-in**: a background monitor computes RMS energy while C.A.R.L.A. is

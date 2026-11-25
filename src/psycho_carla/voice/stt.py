@@ -262,18 +262,124 @@ class WakeEvent:
     detected: bool = False
     score: float = 0.0
     timestamp: float = field(default_factory=time.time)
+    remainder: str = ""
+    """Words spoken after the wake phrase ("hey carla, what time is it" → "what time is it")."""
+
+
+def _norm(text: str) -> list[str]:
+    import re
+
+    return re.findall(r"[a-z0-9']+", (text or "").lower())
+
+
+#: Things a speech recogniser commonly writes for "carla".
+_NAME_VARIANTS = {"carla", "karla", "carlo", "carlah", "calla", "carler", "carly", "karlo"}
+_HEY_VARIANTS = {"hey", "hay", "hi", "okay", "ok", "a", "hey,"}
+
+
+def match_wake_phrase(text: str, phrase: str = "hey carla") -> tuple[bool, float, str]:
+    """Does ``text`` start with the wake phrase? → (matched, score, remainder).
+
+    Tolerant of how recognisers mis-hear it ("hey karla", "hay carlo"), and of
+    the phrase being followed by a command. Only the first few words are
+    considered so a sentence that merely mentions Carla does not wake her.
+    """
+    from difflib import SequenceMatcher
+
+    words = _norm(text)
+    target = _norm(phrase)
+    if not words or not target:
+        return False, 0.0, ""
+    name = target[-1]
+    names = _NAME_VARIANTS if name == "carla" else {name}
+    for i in range(min(len(words), 4)):
+        w = words[i]
+        is_name = w in names or SequenceMatcher(None, w, name).ratio() >= 0.8
+        if not is_name:
+            continue
+        before = words[:i]
+        if len(target) == 1 or (before and before[-1] in _HEY_VARIANTS | {target[0]}) or \
+                (before and SequenceMatcher(None, before[-1], target[0]).ratio() >= 0.7):
+            return True, 1.0 if w == name else 0.85, " ".join(words[i + 1:])
+        if len(target) > 1 and i == 0:
+            continue
+    return False, 0.0, ""
+
+
+class TranscriptWakeDetector:
+    """Wake word by listening for the phrase with the speech recogniser.
+
+    Needs no trained model, so "hey carla" works today. It buffers audio while
+    someone is speaking (simple energy gate), and when they pause transcribes
+    that short utterance and checks for the phrase. Costs a little CPU only
+    when speech is heard — silence is never transcribed.
+    """
+
+    def __init__(self, stt: Any, wake_word: str = "hey carla",
+                 energy_threshold: float = 0.015, max_seconds: float = 4.0,
+                 silence_seconds: float = 0.6) -> None:
+        self.stt = stt
+        self.wake_word = wake_word
+        self.energy_threshold = energy_threshold
+        self.max_seconds = max_seconds
+        self.silence_seconds = silence_seconds
+        self._buf: list[np.ndarray] = []
+        self._speech = 0.0
+        self._quiet = 0.0
+        self._lock = threading.Lock()
+
+    def available(self) -> bool:
+        try:
+            return bool(self.stt.available())
+        except Exception:
+            return False
+
+    def detect(self, audio: np.ndarray, sample_rate: int = 16000) -> WakeEvent:
+        if audio is None or len(audio) == 0:
+            return WakeEvent()
+        secs = len(audio) / float(sample_rate)
+        loud = float(np.sqrt(np.mean(np.square(audio.astype(np.float32))))) >= self.energy_threshold
+        with self._lock:
+            if loud:
+                self._buf.append(audio)
+                self._speech += secs
+                self._quiet = 0.0
+            elif self._buf:
+                self._buf.append(audio)
+                self._quiet += secs
+            else:
+                return WakeEvent()
+            done = self._quiet >= self.silence_seconds or self._speech + self._quiet >= self.max_seconds
+            if not done:
+                return WakeEvent()
+            clip = np.concatenate(self._buf)
+            spoke = self._speech
+            self._buf, self._speech, self._quiet = [], 0.0, 0.0
+        if spoke < 0.25:
+            return WakeEvent()
+        try:
+            text = self.stt.transcribe(clip, sample_rate)
+        except Exception:
+            return WakeEvent()
+        matched, score, rest = match_wake_phrase(text, self.wake_word)
+        return WakeEvent(detected=matched, score=score, remainder=rest)
 
 
 class WakeWordDetector:
     """openWakeWord detector for the configured wake phrase."""
 
-    def __init__(self, wake_word: str = "hey carla", model: str = "hey_jarvis") -> None:
+    def __init__(self, wake_word: str = "hey carla", model: str = "") -> None:
+        # ``model`` must be a custom-trained "hey carla" model file. There is
+        # deliberately no default: openWakeWord's bundled models respond to
+        # other phrases, not this one.
         self.wake_word = wake_word
         self.model_name = model
         self._model = None
         self._lock = threading.Lock()
 
     def available(self) -> bool:
+        if not self.model_name:
+            return False
         try:
             import openwakeword  # type: ignore  # noqa: F401
 
@@ -299,8 +405,9 @@ class WakeWordDetector:
         try:
             with self._lock:
                 prediction = model.predict(audio)
-            scores = prediction[self.model_name] if isinstance(prediction, dict) else {}
-            score = float(max(scores.values())) if scores else 0.0
+            key = Path(self.model_name).stem
+            raw = prediction.get(key, prediction.get(self.model_name, 0.0)) if isinstance(prediction, dict) else 0.0
+            score = float(max(raw.values())) if isinstance(raw, dict) and raw else float(raw or 0.0)
             return WakeEvent(detected=score >= 0.5, score=score)
         except Exception:
             return WakeEvent(detected=False, score=0.0)

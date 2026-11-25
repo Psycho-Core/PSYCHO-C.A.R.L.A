@@ -30,6 +30,7 @@ class ApprovalAction:
     arguments: dict[str, Any] = field(default_factory=dict)
     agent: str = ""
     reason: str = ""
+    kind: str = "tool"       # tool | channel | agent_spawn
     status: str = "pending"  # pending | approved | denied | executed | failed
     created_at: float = 0.0
     decided_at: float = 0.0
@@ -38,7 +39,8 @@ class ApprovalAction:
     def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id, "tool": self.tool, "arguments": dict(self.arguments),
-            "agent": self.agent, "reason": self.reason, "status": self.status,
+            "agent": self.agent, "reason": self.reason, "kind": self.kind,
+            "status": self.status,
             "created_at": self.created_at, "decided_at": self.decided_at,
             "result": self.result,
         }
@@ -46,7 +48,7 @@ class ApprovalAction:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ApprovalAction":
         return cls(**{k: data.get(k, default) for k, default in {
-            "id": "", "tool": "", "arguments": {}, "agent": "", "reason": "",
+            "id": "", "tool": "", "arguments": {}, "agent": "", "reason": "", "kind": "tool",
             "status": "pending", "created_at": 0.0, "decided_at": 0.0,
             "result": "",
         }.items()})
@@ -88,12 +90,12 @@ class ApprovalStore:
 
     # -- queue ----------------------------------------------------------------- #
     def queue(self, tool: str, arguments: dict[str, Any] | None = None,
-              agent: str = "", reason: str = "") -> ApprovalAction:
+              agent: str = "", reason: str = "", kind: str = "tool") -> ApprovalAction:
         with self._lock:
             action = ApprovalAction(
                 id=uuid.uuid4().hex[:12], tool=tool,
                 arguments=dict(arguments or {}), agent=agent, reason=reason,
-                created_at=time.time(),
+                kind=kind, created_at=time.time(),
             )
             self._actions[action.id] = action
             self._save()
@@ -127,7 +129,7 @@ class ApprovalStore:
                 self._save()
                 return action
             action.status = "approved"
-            if executor is not None:
+            if executor is not None and action.kind == "tool":
                 try:
                     result = executor(action.tool, dict(action.arguments))
                     action.result = str(result)[:4000]

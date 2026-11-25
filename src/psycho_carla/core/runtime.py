@@ -113,6 +113,7 @@ class CarlaRuntime:
         from ..security.approvals import ApprovalStore
 
         self.approvals = ApprovalStore(self.config.data_dir / "approvals.json")
+        self.tools.gate = self._confirmation_gate
 
         # -- Cross-channel sessions -------------------------------------------- #
         self.sessions = None
@@ -388,6 +389,14 @@ class CarlaRuntime:
         self.telemetry.stop()
         self.memory.close()
         self.traces.close()
+        # Release the remaining database files too — Windows will not let a
+        # backup restore or a delete touch a file that is still open.
+        for store in (self.knowledge, self.sessions):
+            try:
+                if store is not None:
+                    store.close()
+            except Exception:
+                pass
         self._started = False
         self.emit("runtime_stopped", {})
 
@@ -703,6 +712,24 @@ class CarlaRuntime:
     # ------------------------------------------------------------------ #
     # Status
     # ------------------------------------------------------------------ #
+    def _confirmation_gate(self, name: str, args: dict[str, Any]):
+        """Safe mode: queue risky tool calls for approval instead of running them."""
+        from ..security.capabilities import load_policy
+        from ..tools.registry import ToolResult
+
+        if not getattr(self.config.security, "enforce_tool_confirmation", False):
+            return None
+        if not load_policy(self.config).needs_confirmation(name):
+            return None
+        action = self.approvals.queue(name, args, reason="safe mode")
+        self.emit("approval_needed", {"id": action.id, "tool": name})
+        return ToolResult(
+            tool=name, ok=False,
+            error=(f"'{name}' was NOT run — safe mode needs the owner's approval "
+                   f"(request {action.id}). Tell the owner to approve it in the HUD "
+                   "Approvals panel, then continue."),
+        )
+
     def status(self) -> dict[str, Any]:
         return {
             "app": "PSYCHO-C.A.R.L.A.",

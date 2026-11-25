@@ -80,6 +80,16 @@ def _sets(value: Any) -> set[str]:
     return set()
 
 
+#: Tools that change files, run code or delete data. In safe mode (the default)
+#: an agent calling one of these is queued for your approval instead.
+SAFE_MODE_TOOLS = (
+    "shell_exec", "shell_python", "docker_shell_exec", "code_execute",
+    "code_interpreter", "code_interpreter_docker", "repl",
+    "file_write", "file_delete", "file_move", "apply_patch",
+    "git_commit", "memory_delete", "memory_forget",
+)
+
+
 def load_policy(config: Any = None) -> CapabilityPolicy:
     """Build the active policy from config (+ optional policy file)."""
     policy = CapabilityPolicy()
@@ -87,8 +97,7 @@ def load_policy(config: Any = None) -> CapabilityPolicy:
     if security is not None:
         policy.default_deny = bool(getattr(security, "default_deny", False))
         if getattr(security, "enforce_tool_confirmation", False):
-            policy.require_confirmation |= {"shell_exec", "file_delete",
-                                            "file_write", "memory_delete"}
+            policy.require_confirmation |= set(SAFE_MODE_TOOLS)
     path = getattr(security, "capabilities_policy_path", "") if security else ""
     if path:
         file_path = Path(path).expanduser()

@@ -52,6 +52,7 @@ class ModelLifecycle:
         self._lock = threading.RLock()
         self._adapter: Any = None
         self._adapter_model_id: str = ""
+        self._gguf_id: str = ""
         self._states: dict[str, ModelState] = {}
 
     # ------------------------------------------------------------------
@@ -79,12 +80,14 @@ class ModelLifecycle:
         return rows
 
     def partial_downloads(self) -> list[dict[str, Any]]:
-        """Downloads that never finished, so they can be cleared out."""
+        """Downloads that never finished (ONNX folders and GGUF ``.part`` files)."""
+        from psycho_carla.intelligence.model_manager import partial_gguf_downloads
+
+        found: list[dict[str, Any]] = list(partial_gguf_downloads())
         root = _native_root()
         if not root.exists():
-            return []
+            return found
 
-        found: list[dict[str, Any]] = []
         for directory in sorted(p for p in root.iterdir() if p.is_dir()):
             if _has_complete_graph(directory):
                 continue  # a complete download
@@ -109,7 +112,13 @@ class ModelLifecycle:
         is the whole point of running it natively rather than paying the
         load cost on every message.
         """
-        from psycho_carla.intelligence.model_manager import native_model_dir
+        from psycho_carla.intelligence.model_manager import (
+            find_gguf, native_model_dir,
+        )
+
+        gguf = None if model_path else find_gguf(model_id)
+        if gguf is not None and not native_model_dir(model_id).exists():
+            return self._start_gguf(model_id, gguf)
 
         with self._lock:
             if self._adapter is not None:
@@ -171,9 +180,30 @@ class ModelLifecycle:
             "already_running": False,
         }
 
+    def _start_gguf(self, model_id: str, path: Any) -> dict[str, Any]:
+        from psycho_carla.intelligence.llama_engine import server
+        from psycho_carla.providers.adapters.native_onnx import configured_device
+
+        with self._lock:
+            if self._adapter is not None:
+                self._stop_locked()
+            result = server.start(str(path), device=configured_device())
+            if result.get("ok"):
+                self._gguf_id = model_id
+            return {"ok": bool(result.get("ok")), "model_id": model_id,
+                    "message": result.get("message", ""),
+                    "already_running": bool(result.get("already_running"))}
+
     def stop(self, model_id: str = "") -> dict[str, Any]:
         """Unload the running model and free the memory."""
+        from psycho_carla.intelligence.llama_engine import server
+
         with self._lock:
+            if self._gguf_id and (not model_id or model_id == self._gguf_id):
+                name, self._gguf_id = self._gguf_id, ""
+                server.stop()
+                return {"ok": True, "model_id": name, "message": f"'{name}' stopped",
+                        "was_running": True}
             if self._adapter is None:
                 return {
                     "ok": True,
@@ -215,7 +245,13 @@ class ModelLifecycle:
 
     def status(self) -> dict[str, Any]:
         """The running model, if any."""
+        from psycho_carla.intelligence.llama_engine import server
+
         with self._lock:
+            if self._gguf_id and server.running:
+                return {"running": True, "model_id": self._gguf_id,
+                        "engine": "native_gguf",
+                        "device": f"gpu layers: {server.gpu_layers}"}
             if self._adapter is None:
                 return {"running": False, "model_id": ""}
             return {
@@ -247,7 +283,13 @@ class ModelLifecycle:
 
         before = _avail()
         released: list[str] = []
+        from psycho_carla.intelligence.llama_engine import server
+
         with self._lock:
+            if self._gguf_id or server.running:
+                released.append(self._gguf_id or "llama.cpp engine")
+                self._gguf_id = ""
+                server.stop()
             if self._adapter is not None:
                 released.append(self._adapter_model_id)
                 self._stop_locked()
@@ -305,22 +347,29 @@ class ModelLifecycle:
     def delete_partial(self, model_id: str = "") -> dict[str, Any]:
         """Remove partial downloads — the ones that never finished."""
         from psycho_carla.intelligence.model_manager import (
-            delete_native_model,
+            delete_native_model, delete_partial_gguf,
         )
 
-        if model_id:
-            targets = [model_id]
+        if model_id.startswith("file:"):
+            return delete_partial_gguf(model_id)
+        gguf_removed: list[str] = []
+        if not model_id:
+            gguf_removed = delete_partial_gguf().get("removed", [])
+            targets = [row["id"] for row in self.partial_downloads()
+                       if not str(row["id"]).startswith("file:")]
         else:
-            targets = [row["id"] for row in self.partial_downloads()]
+            targets = [model_id]
 
         if not targets:
             return {
                 "ok": True,
-                "message": "there are no partial downloads to clean up",
-                "removed": [],
+                "message": (f"cleaned up {len(gguf_removed)} partial download"
+                            f"{'s' if len(gguf_removed) != 1 else ''}" if gguf_removed
+                            else "there are no partial downloads to clean up"),
+                "removed": gguf_removed,
             }
 
-        removed: list[str] = []
+        removed: list[str] = list(gguf_removed)
         problems: list[str] = []
         for target in targets:
             result = delete_native_model(target)

@@ -17,13 +17,12 @@ running, via the built-in offline fallback.
 ## Where it stands (verified 2026-11-13)
 
 - ✅ Code complete — nothing half-built
-- ✅ **423 automated tests pass**, **46/46 end-to-end checks pass**
+- ✅ **475 automated tests pass**, **46/46 end-to-end checks pass**
 - ✅ Rename to PSYCHO-C.A.R.L.A. fully applied and audited
   (`docs/audits/NAME-CHANGE-AUDIT.md`)
 - ✅ “What she calls you” setting audited (`docs/audits/USER-NAME-AUDIT.md`)
 - ✅ Model Manager: custom models, DirectML GPU switch, free memory, auto-pick, remote PC (see `docs/MODELS.md`) — GPU path untested on real hardware
-- ⏳ **Windows `.exe` not built yet** — that step can only run on your
-  Windows 11 machine (see below)
+- ✅ Windows `.exe` is built by GitHub Actions and attached to a Release; it has not been run by a person yet — please try it (see Releases)
 - 💬 Discussed, not built: your own trainable model (fine-tuning add-on)
 
 Full history: `docs/audits/PARITY-AUDIT-7.md` (feature/settings parity),
@@ -68,20 +67,21 @@ user_name = ""       # what she calls you — blank means "Psycho"
 - **Your name:** set `user_name` and she uses it in chat, channels, HUD,
   and speech. It’s currently blank, so she calls you **Psycho**.
 - **Models:** you define capability tiers (`fast_tier`, `deep_tier`, …)
-  and point each at any provider — Ollama, an OpenAI-compatible endpoint,
-  or the built-in native engine. Nothing is hardcoded.
+  and point each at any provider — the built-in llama.cpp engine (default,
+  no Ollama), OpenRouter, another PC, or any OpenAI-compatible endpoint.
+  Nothing is hardcoded.
 - **Channels:** add e.g. `[channels.webchat]` / Telegram etc. under
   `[channels.*]`; without one configured, chat-in-from-channels is off.
-- **Voice:** wake phrase is “hey carla” (the wake-word model file itself
-  is a third-party pretrained file — a custom “hey carla” model is a
-  possible future upgrade).
+- **Voice:** wake phrase is “hey carla” — detected by listening with the
+  speech recogniser (no trained model needed; `pip install -e ".[voice]"`).
+  Pick her voice on the audition page (`/voice`) with **Use this voice**.
 
 ## If you pick this up cold later
 
 1. Read this file, then `CLAUDE.md`.
 2. `pip install -e .` → `carla doctor` → `carla serve`.
 3. Run `python -m pytest tests/ -q` to confirm everything is still green
-   (expect 423 passing).
+   (expect 475 passing).
 4. Any AI assistant can take over from `CLAUDE.md` — it has the full map,
    the traps, and your settled preferences (your name, the locked product
    name, original-code-only).

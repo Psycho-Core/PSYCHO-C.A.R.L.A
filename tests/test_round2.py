@@ -340,7 +340,7 @@ class TestWorkflow:
     def test_toml_workflow_round_trips(self):
         from psycho_carla.workflow import load_workflow
 
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             path = Path(tmp) / "wf.toml"
             path.write_text(
                 "[workflow]\nname = 'sample'\n"
@@ -1662,7 +1662,7 @@ class TestChannelParityFixes:
         from pathlib import Path
         from psycho_carla.channels.imessage_daemon import poll_new_messages
 
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             db = Path(tmp) / "chat.db"
             conn = sqlite3.connect(str(db))
             conn.executescript("""
@@ -1714,7 +1714,7 @@ class TestChannelParityFixes:
         import tempfile
         from pathlib import Path
 
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             store = SessionStore(Path(tmp) / "s.db")
             try:
                 bridge = ChannelBridge({}, session_store=store)
@@ -1739,7 +1739,7 @@ class TestChannelParityFixes:
         import tempfile
         from pathlib import Path
 
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             store = SessionStore(Path(tmp) / "s.db")
             try:
                 bridge = ChannelBridge({}, session_store=store)
@@ -1760,7 +1760,7 @@ class TestChannelParityFixes:
         import tempfile
         from pathlib import Path
 
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             store = SessionStore(Path(tmp) / "s.db")
             try:
                 bridge = ChannelBridge({}, session_store=store)
@@ -1777,7 +1777,7 @@ class TestChannelParityFixes:
         import tempfile
         from pathlib import Path
 
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             store = SessionStore(Path(tmp) / "s.db")
             try:
                 store.create("s1", metadata={"user_id": "alice"})
@@ -1801,7 +1801,7 @@ class TestChannelParityFixes:
         from pathlib import Path
         from psycho_carla.sessions.session import SessionStore
 
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             db = Path(tmp) / "old.db"
             conn = sqlite3.connect(str(db))
             conn.execute("""
@@ -1857,7 +1857,7 @@ class TestChannelParityFixes:
             def list_channels(self):
                 return ["fake"]
 
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             store = SessionStore(Path(tmp) / "s.db")
             try:
                 fake = FakeChannel()

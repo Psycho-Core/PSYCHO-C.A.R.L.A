@@ -1555,6 +1555,42 @@ def cmd_tunnel(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_engine(args: argparse.Namespace) -> int:
+    """Install or inspect C.A.R.L.A.'s own llama.cpp engine."""
+    from ..intelligence.llama_engine import engine_status, install_engine
+
+    if args.engine_cmd == "install":
+        r = install_engine(args.backend, progress=lambda m, p=None: print(
+            f"    {'[%d%%] ' % p if p is not None else ''}{m}"))
+        print(_c(f"\n  {'✓' if r['ok'] else '✗'} {r['message']}\n", "green" if r["ok"] else "amber"))
+        return 0 if r["ok"] else 1
+    st = engine_status()
+    print(f"\n  installed: {st['installed']}   backend: {st['backend'] or '-'}   binary: {st['binary'] or '-'}\n")
+    return 0
+
+
+def cmd_backup(args: argparse.Namespace) -> int:
+    """Back up / restore config, memory, sessions, knowledge and skills."""
+    from pathlib import Path
+
+    from ..core.backup import create_backup, restore_backup
+    from ..core.config import load_config
+
+    home = load_config().home
+    if args.backup_cmd == "create":
+        out = Path(args.output or time.strftime("carla-backup-%Y%m%d-%H%M%S.zip"))
+        out.write_bytes(create_backup(home, include_vault=args.include_vault))
+        print(_c(f"\n  ✓ wrote {out}"
+                 + (" (includes your API-key vault — keep it private)" if args.include_vault else "")
+                 + "\n", "green"))
+        return 0
+    r = restore_backup(home, Path(args.file).read_bytes())
+    print(_c(f"\n  {'✓' if r['ok'] else '✗'} {r['message']}\n", "green" if r["ok"] else "amber"))
+    if r.get("previous_state"):
+        print(f"    previous files kept in {r['previous_state']}\n")
+    return 0 if r["ok"] else 1
+
+
 def cmd_export(args: argparse.Namespace) -> int:
     """Export conversations (markdown/json) or a fine-tuning dataset (training)."""
     from ..core.config import load_config
@@ -1592,6 +1628,17 @@ def cmd_model(args: argparse.Namespace) -> int:
     )
 
     action = args.model_cmd
+
+    if action == "cloud":
+        import getpass
+
+        from ..intelligence.model_manager import add_cloud_tier
+
+        key = getpass.getpass("OpenRouter API key (blank to keep the stored one): ") if args.ask_key else ""
+        r = add_cloud_tier("openrouter", args.model, tier=args.tier, api_key=key)
+        print(_c(f"\n  {'✓' if r['ok'] else '✗'} {r.get('message') or r.get('error')}\n",
+                 "green" if r["ok"] else "amber"))
+        return 0 if r["ok"] else 1
 
     if action == "custom":
         from ..intelligence.model_manager import pull_custom
@@ -2639,6 +2686,25 @@ def build_parser() -> argparse.ArgumentParser:
     rgsh.add_argument("what", help="tools | tiers | agents | adapters")
     sp.set_defaults(func=cmd_registry)
 
+    # engine
+    sp = sub.add_parser("engine", help="Install or inspect the built-in llama.cpp engine")
+    esub = sp.add_subparsers(dest="engine_cmd", required=True)
+    ei = esub.add_parser("install", help="Download the official llama.cpp build")
+    ei.add_argument("--backend", default="vulkan", choices=["vulkan", "cpu", "hip"],
+                    help="vulkan = any GPU (AMD/NVIDIA/Intel); cpu = no GPU; hip = AMD ROCm")
+    esub.add_parser("status", help="Is the engine installed?")
+    sp.set_defaults(func=cmd_engine)
+
+    # backup
+    sp = sub.add_parser("backup", help="Back up or restore your config, memory and skills")
+    bsub = sp.add_subparsers(dest="backup_cmd", required=True)
+    bc = bsub.add_parser("create", help="Write a backup zip")
+    bc.add_argument("-o", "--output", default="")
+    bc.add_argument("--include-vault", action="store_true", help="also include saved API keys (encrypted)")
+    br = bsub.add_parser("restore", help="Restore a backup zip (current files are kept aside)")
+    br.add_argument("file")
+    sp.set_defaults(func=cmd_backup)
+
     # export
     sp = sub.add_parser("export", help="Export conversations or a training dataset")
     sp.add_argument("--format", default="markdown", choices=["markdown", "json", "training"])
@@ -2675,6 +2741,10 @@ def build_parser() -> argparse.ArgumentParser:
     mdlc.add_argument("--engine", default="ollama", help="ollama | llamacpp | native_onnx")
     mdlc.add_argument("--file", default="", help="file inside the repo (.gguf / .onnx)")
     mdlsub.add_parser("free", help="Unload all models and free memory")
+    mdlk = mdlsub.add_parser("cloud", help="Use a hosted model through OpenRouter")
+    mdlk.add_argument("model", help="e.g. qwen/qwen-2.5-coder-32b-instruct")
+    mdlk.add_argument("--tier", default="deep_tier")
+    mdlk.add_argument("--ask-key", action="store_true", help="prompt for the API key (stored in the encrypted vault)")
     mdlv = mdlsub.add_parser("device", help="Show or set the native engine device")
     mdlv.add_argument("device", nargs="?", default="", help="cpu | gpu | auto")
     mdlm = mdlsub.add_parser("remote", help="Use a model served by another PC")
@@ -3003,7 +3073,17 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _use_utf8_output() -> None:
+    """Never crash on a ✓ or ═ just because the console / pipe is cp1252 (Windows)."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _use_utf8_output()
     # Restart once with espeak-ng on the dynamic loader path, if a local
     # install needs it. Safe here because this is a process entrypoint.
     from ..voice.tts import maybe_reexec_with_espeak

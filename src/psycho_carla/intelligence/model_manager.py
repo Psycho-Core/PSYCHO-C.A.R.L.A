@@ -543,6 +543,55 @@ def delete_native_model(model_id: str) -> DownloadResult:
     )
 
 
+def _download_resumable(url: str, out: Path, progress: ProgressFn,
+                        attempts: int = 5) -> str:
+    """Download ``url`` to ``out`` with resume. Returns an error string, or ``""``.
+
+    Data goes to ``<out>.part`` and is renamed only when the full length has
+    arrived, so a cancelled or crashed download can never look like an
+    installed model. An existing ``.part`` file is continued with an HTTP
+    Range request.
+    """
+    import time as _time
+
+    part = out.with_name(out.name + ".part")
+    if out.exists():
+        return ""
+    last = ""
+    for attempt in range(attempts):
+        have = part.stat().st_size if part.exists() else 0
+        req = urllib.request.Request(url, headers={"User-Agent": "psycho-carla"})
+        if have:
+            req.add_header("Range", f"bytes={have}-")
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                status = getattr(resp, "status", 200)
+                length = int(resp.headers.get("Content-Length") or 0)
+                if have and status != 206:        # server ignored Range: start over
+                    have = 0
+                total = have + length if length else 0
+                mode = "ab" if have else "wb"
+                done = have
+                with open(part, mode) as fh:
+                    while True:
+                        chunk = resp.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        fh.write(chunk)
+                        done += len(chunk)
+                        if total:
+                            progress(out.name, done * 100.0 / total)
+            if total and part.stat().st_size != total:
+                last = f"incomplete ({part.stat().st_size} of {total} bytes)"
+                continue
+            part.replace(out)
+            return ""
+        except Exception as exc:                  # network drop: keep .part, retry
+            last = f"{type(exc).__name__}: {exc}"
+            _time.sleep(min(2 ** attempt, 10))
+    return f"{last} — run the download again to resume"
+
+
 def _hf_download_plain(
     repo: str,
     filename: str | None,
@@ -580,24 +629,9 @@ def _hf_download_plain(
         url = f"https://huggingface.co/{repo}/resolve/main/{name}"
         out = target_dir / Path(name).name
         progress(f"downloading {Path(name).name}", None)
-        try:
-            with urllib.request.urlopen(url, timeout=120) as resp:
-                total = int(resp.headers.get("Content-Length") or 0)
-                done = 0
-                with open(out, "wb") as fh:
-                    while True:
-                        chunk = resp.read(1024 * 256)
-                        if not chunk:
-                            break
-                        fh.write(chunk)
-                        done += len(chunk)
-                        if total:
-                            progress(f"{Path(name).name}", done / total)
-            print()
-        except Exception as exc:
-            return DownloadResult(
-                False, repo, "llamacpp", message=f"download failed: {exc}",
-            )
+        err = _download_resumable(url, out, progress)
+        if err:
+            return DownloadResult(False, repo, "llamacpp", message=f"download failed: {err}")
 
     return DownloadResult(
         True, repo, "llamacpp", path=str(target_dir),
@@ -630,6 +664,17 @@ def pull_model(
     if engine == "ollama":
         tag = spec.ollama_tag if spec else model_id
         return ollama_pull(tag, progress=progress)
+
+    if engine == "native_gguf":
+        if spec is None or not spec.hf_repo or not spec.gguf_file:
+            return DownloadResult(
+                False, model_id, engine,
+                message=(f"'{model_id}' is not a catalog GGUF model — use Custom model "
+                         "with a Hugging Face repo and file name"),
+            )
+        result = hf_download(spec.hf_repo, spec.gguf_file, progress=progress)
+        result.engine = "native_gguf"
+        return result
 
     if engine in ("llamacpp", "llama_cpp"):
         if spec is None:
@@ -759,7 +804,7 @@ def local_models() -> list[dict]:
             size_gb = 0.0
         found.append({
             "model_id": path.stem,
-            "engine": "llamacpp",
+            "engine": "native_gguf",
             "size_gb": size_gb,
             "path": str(path),
             "details": {"file": path.name},
@@ -791,6 +836,9 @@ def delete_local_model(model_id: str, engine: str = "llamacpp") -> DownloadResul
 
     if engine in ("native_onnx", "native", "onnx"):
         return delete_native_model(model_id)
+
+    if engine == "native_gguf":
+        return delete_gguf_model(model_id)
 
     if engine == "ollama":
         return DownloadResult(
@@ -944,7 +992,12 @@ def pull_custom(
             False, ref, engine,
             message=f"'{ref}' is not a Hugging Face repo — expected owner/name",
         )
-    if engine in ("llamacpp", "llama_cpp"):
+    if engine in ("llamacpp", "llama_cpp", "native_gguf"):
+        if engine == "native_gguf" and not filename.lower().endswith(".gguf"):
+            return DownloadResult(
+                False, ref, engine,
+                message="enter the exact .gguf file name from the repository page",
+            )
         return hf_download(ref, filename or None, progress=progress)
     if engine in ("native_onnx", "native", "onnx"):
         model_id = "native:custom-" + ref.replace("/", "--").lower()
@@ -1039,3 +1092,177 @@ def add_remote_tier(
     save_config(config)
     return {"ok": True, "tier": tier, "base_url": base, "model": model.strip(),
             "message": f"'{tier}' now uses {model.strip()} on {host}"}
+
+
+# ---------------------------------------------------------------------------
+# GGUF (managed llama.cpp) models
+# ---------------------------------------------------------------------------
+
+def find_gguf(model_id: str) -> Path | None:
+    """The downloaded ``.gguf`` file for a catalog id, file name or stem."""
+    from .model_catalog import find_model_spec
+
+    base = models_dir()
+    names: list[str] = []
+    spec = find_model_spec(model_id) if model_id.startswith("gguf:") else None
+    if spec is not None and spec.gguf_file:
+        names.append(spec.gguf_file)
+    names += [model_id, model_id + ".gguf"]
+    for path in base.rglob("*.gguf"):
+        if path.name in names or path.stem == model_id:
+            return path
+    return None
+
+
+def best_gguf_model(free_ram_gb: float | None = None, max_params_b: float = 14.0,
+                    prefer_uncensored: bool = False):
+    """Largest catalog GGUF model that fits free RAM (capped at ``max_params_b``)."""
+    from .model_catalog import GGUF_MODELS
+
+    if free_ram_gb is None:
+        free_ram_gb = _free_memory_gb()
+    fits = [m for m in GGUF_MODELS
+            if m.ram_gb <= max(free_ram_gb - 1.0, 0) and m.parameter_count_b <= max_params_b
+            and (not prefer_uncensored or m.metadata.get("uncensored"))]
+    # Biggest that fits; on a tie the uncensored build wins (the owner's preference).
+    return max(fits, key=lambda m: (m.parameter_count_b, bool(m.metadata.get('uncensored')))) if fits else None
+
+
+def activate_gguf_model(model_id: str, tier: str = "fast_tier") -> dict:
+    """Point a tier at a downloaded GGUF model (provider ``native_gguf``)."""
+    from ..core.config import TierConfig, load_config, save_config
+
+    path = find_gguf(model_id)
+    if path is None:
+        return {"ok": False, "error": f"'{model_id}' is not downloaded yet"}
+    config = load_config()
+    existing = config.intelligence.tiers.get(tier)
+    config.intelligence.tiers[tier] = TierConfig(
+        provider="native_gguf", model=model_id,
+        temperature=existing.temperature if existing else 0.7,
+        max_tokens=existing.max_tokens if existing else 2048,
+        description=f"{model_id}, run by C.A.R.L.A.'s own llama.cpp engine",
+        extra={"model_path": str(path)},
+    )
+    save_config(config)
+    return {"ok": True, "tier": tier, "model_id": model_id, "model_path": str(path),
+            "message": f"'{tier}' now runs {model_id}"}
+
+
+def add_cloud_tier(provider: str, model: str, tier: str = "deep_tier",
+                   api_key: str = "") -> dict:
+    """Point a tier at a hosted model. ``provider`` is ``openrouter`` or ``openai_compat``.
+
+    An API key given here is stored in the encrypted vault (never in the
+    config file); the tier reads it from the vault or ``OPENROUTER_API_KEY``.
+    """
+    provider = (provider or "openrouter").lower()
+    if provider != "openrouter":
+        return {"ok": False, "error": "only 'openrouter' is configured here; use the "
+                                      "config file for other OpenAI-compatible endpoints"}
+    if not model.strip():
+        return {"ok": False, "error": "a model id is required, e.g. qwen/qwen-2.5-coder-32b-instruct"}
+    if api_key.strip():
+        from ..providers.adapters.openrouter import KEY_NAME
+        from ..security.vault import Vault
+
+        Vault().set(KEY_NAME, api_key.strip())
+    from ..core.config import TierConfig, load_config, save_config
+
+    config = load_config()
+    existing = config.intelligence.tiers.get(tier)
+    config.intelligence.tiers[tier] = TierConfig(
+        provider="openrouter", model=model.strip(),
+        temperature=existing.temperature if existing else 0.7,
+        max_tokens=existing.max_tokens if existing else 2048,
+        description=f"{model.strip()} via OpenRouter",
+    )
+    save_config(config)
+    from ..providers.adapters.openrouter import stored_key
+
+    note = "" if stored_key() else " — add an API key (Model Manager → Cloud models)"
+    return {"ok": True, "tier": tier, "model": model.strip(),
+            "message": f"'{tier}' now uses {model.strip()} via OpenRouter{note}"}
+
+
+# ---------------------------------------------------------------------------
+# Partial GGUF downloads, and deleting models
+# ---------------------------------------------------------------------------
+
+def _inside_models_dir(path: Path) -> bool:
+    try:
+        path.resolve().relative_to(models_dir().resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def partial_gguf_downloads() -> list[dict]:
+    """Unfinished GGUF downloads: ``*.part`` files and hub ``*.incomplete`` files."""
+    base = models_dir()
+    found: list[dict] = []
+    for pattern in ("*.part", "*.incomplete"):
+        for path in base.rglob(pattern):
+            try:
+                size_mb = round(path.stat().st_size / (1024 * 1024), 1)
+            except OSError:
+                continue
+            found.append({
+                "id": "file:" + str(path.relative_to(base)).replace("\\", "/"),
+                "name": path.name, "path": str(path), "size_mb": size_mb,
+                "engine": "native_gguf", "partial": True,
+            })
+    return found
+
+
+def delete_partial_gguf(partial_id: str = "") -> dict:
+    """Delete one partial GGUF download (``file:<relative path>``), or all of them."""
+    base = models_dir()
+    targets = [p for p in partial_gguf_downloads()
+               if not partial_id or p["id"] == partial_id]
+    removed, problems = [], []
+    for item in targets:
+        path = Path(item["path"])
+        if not _inside_models_dir(path):
+            problems.append(f"refusing to delete outside the models folder: {path}")
+            continue
+        try:
+            path.unlink()
+            removed.append(item["id"])
+        except OSError as exc:
+            problems.append(f"could not delete {path.name}: {exc}")
+    return {"ok": not problems, "removed": removed,
+            "message": "; ".join(problems) or (f"removed {len(removed)} partial download(s)"
+                                               if removed else "no partial downloads"),
+            "base": str(base)}
+
+
+def delete_gguf_model(model_id: str) -> DownloadResult:
+    """Delete a downloaded GGUF model. Stops the engine first if it is using it."""
+    path = find_gguf(model_id)
+    if path is None:
+        return DownloadResult(False, model_id, "native_gguf", message="no such local model")
+    if not _inside_models_dir(path):
+        return DownloadResult(False, model_id, "native_gguf",
+                              message="refusing to delete a file outside the models directory")
+    try:
+        from .llama_engine import server
+
+        if server.running and server.model_path == str(path):
+            from .model_lifecycle import lifecycle
+
+            lifecycle.stop()
+            server.stop()          # Windows cannot delete a file the engine has open
+    except Exception:
+        pass
+    try:
+        path.unlink()
+        # tidy: hub bookkeeping for that file, and an emptied repo folder
+        meta = path.parent / ".cache" / "huggingface" / "download" / (path.name + ".metadata")
+        meta.unlink(missing_ok=True)
+        if path.parent != models_dir() and not any(path.parent.iterdir()):
+            path.parent.rmdir()
+    except OSError as exc:
+        return DownloadResult(False, model_id, "native_gguf", message=f"could not delete: {exc}")
+    return DownloadResult(True, model_id, "native_gguf", path=str(path),
+                          message=f"deleted {path.name}")

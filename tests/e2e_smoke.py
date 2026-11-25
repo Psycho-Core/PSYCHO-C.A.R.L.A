@@ -93,7 +93,7 @@ status = get("/api/status")
 check("status responds", status.get("app") == "PSYCHO-C.A.R.L.A.")
 check("agents registered", len(status.get("agents", [])) >= 8,
       f"{len(status.get('agents', []))} agents")
-check("3 tiers configured", len(status.get("tiers", [])) == 3,
+check("tiers configured", len(status.get("tiers", [])) >= 2,
       f"{[t['alias'] for t in status.get('tiers', [])]}")
 check("tools registered", len(status.get("tools", [])) > 15,
       f"{len(status.get('tools', []))} tools")

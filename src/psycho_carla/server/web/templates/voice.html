@@ -125,7 +125,8 @@ async function load(){
 
   let html = "";
   for(const label of labels){
-    html += `<h2>${PALETTE[label] || label}<span class="count">${groups[label].length} clips</span></h2><div class="grid">`;
+    html += `<h2>${PALETTE[label] || label}<span class="count">${groups[label].length} clips</span>
+      <button class="play use-voice" data-label="${label}" style="margin-left:14px">Use this voice</button></h2><div class="grid">`;
     for(const it of groups[label]){
       const id = "a_" + it.file.replace(/\W/g,"_");
       html += `<div class="row" id="${id}">
@@ -143,9 +144,20 @@ async function load(){
   }
   host.innerHTML = html;
 
+  document.querySelectorAll(".use-voice").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      try{
+        const r = await fetch("/api/voice/select", {method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({label: btn.dataset.label})});
+        const d = await r.json();
+        btn.textContent = r.ok ? "✓ " + d.message : "✗ " + (d.detail || "failed");
+      }catch(e){ btn.textContent = "✗ " + e.message; }
+    });
+  });
+
   // Play buttons: only one clip at a time, and pause others.
   const audios = [...document.querySelectorAll("audio")];
-  document.querySelectorAll(".play").forEach(btn=>{
+  document.querySelectorAll(".play[data-src]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const target = audios.find(a=>a.getAttribute("src")===btn.dataset.src);
       if(!target) return;

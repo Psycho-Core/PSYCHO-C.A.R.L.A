@@ -32,6 +32,13 @@ jobs:
       - run: pip install -e .
       - run: carla init
 
+      - name: Show what the llama.cpp release actually contains (diagnostic)
+        shell: pwsh
+        run: |
+          $r = Invoke-RestMethod -Uri "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest" -Headers @{ "User-Agent" = "carla-check" }
+          Write-Host "tag: $($r.tag_name)  name: $($r.name)  assets: $($r.assets.Count)"
+          $r.assets | ForEach-Object { Write-Host $_.name }
+
       - name: Install the llama.cpp engine (downloads the official release)
         run: carla engine install --backend ${{ github.event.inputs.backend }}
 

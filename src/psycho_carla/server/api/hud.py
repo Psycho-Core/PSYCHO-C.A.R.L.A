@@ -47,7 +47,9 @@ async def health(request: Request):
 @router.get("/setup")
 async def setup_state(request: Request):
     """Is a model usable? Drives the first-run banner in the HUD."""
-    from ...intelligence.model_manager import _free_memory_gb, best_native_model
+    from ...intelligence.model_manager import (
+        _free_memory_gb, best_gguf_model, best_native_model,
+    )
 
     runtime = _runtime(request)
     router_ = runtime.router
@@ -56,7 +58,7 @@ async def setup_state(request: Request):
         ok, detail = res.adapter.health()
     except Exception as exc:
         ok, detail = False, str(exc)
-    pick = best_native_model()
+    pick = best_gguf_model() or best_native_model()
     return {
         "needs_setup": not ok,
         "reason": "" if ok else detail,
@@ -65,6 +67,34 @@ async def setup_state(request: Request):
         "free_ram_gb": round(_free_memory_gb(), 1),
         "native_pick": pick.model_id if pick else "",
     }
+
+
+#: Voices offered on the audition page → (engine, voice id).
+VOICE_CHOICES = {
+    "piper_alba_gb_female": ("piper", "en_GB-alba-medium"),
+    "piper_cori_gb_female_high": ("piper", "en_GB-cori-high"),
+    "piper_alan_gb_male": ("piper", "en_GB-alan-medium"),
+    "kokoro_af_heart_us_female": ("kokoro", "af_heart"),
+    "kokoro_am_michael_us_male": ("kokoro", "am_michael"),
+    "kokoro_bf_emma_gb_female": ("kokoro", "bf_emma"),
+    "kokoro_bm_george_gb_male": ("kokoro", "bm_george"),
+}
+
+
+@router.post("/voice/select")
+async def voice_select(request: Request, body: dict[str, Any]):
+    """Make an audition-page voice the default (applies after a restart)."""
+    from ...core.config import load_config, save_config
+
+    label = str(body.get("label", ""))
+    if label not in VOICE_CHOICES:
+        raise HTTPException(status_code=400, detail="unknown voice")
+    engine, voice = VOICE_CHOICES[label]
+    config = load_config()
+    config.voice.tts_engine, config.voice.tts_voice, config.voice.voice_id = engine, voice, ""
+    save_config(config)
+    return {"ok": True, "engine": engine, "voice": voice,
+            "message": f"voice set to {engine} / {voice} — restart C.A.R.L.A. to hear it"}
 
 
 @router.get("/hardware")
@@ -778,15 +808,30 @@ async def models_device_set(request: Request, body: dict[str, Any]):
 
 @router.post("/models/auto")
 async def models_auto(request: Request):
-    """Pick the best native model for this machine, download and start it."""
+    """Pick the best model for this PC, download it and start it.
+
+    Prefers a GGUF model on C.A.R.L.A.'s own llama.cpp engine (installing
+    the engine first if needed); falls back to the small built-in ONNX
+    models if the engine cannot be installed.
+    """
+    from ...intelligence.llama_engine import find_binary, install_engine
     from ...intelligence.model_lifecycle import lifecycle
     from ...intelligence.model_manager import (
-        activate_native_model, best_native_model, pull_model,
+        activate_gguf_model, activate_native_model, best_gguf_model,
+        best_native_model, pull_model,
     )
 
+    gguf = best_gguf_model()
+    if gguf is not None and (find_binary() is not None or install_engine("cpu").get("ok")):
+        pulled = pull_model(gguf.model_id, "native_gguf")
+        if pulled.ok:
+            activate_gguf_model(gguf.model_id, "fast_tier")
+            started = lifecycle.start(gguf.model_id)
+            return {"ok": bool(started.get("ok")), "model_id": gguf.model_id,
+                    "message": started.get("message", "")}
     spec = best_native_model()
     if spec is None:
-        raise HTTPException(status_code=400, detail="not enough free RAM for any native model")
+        raise HTTPException(status_code=400, detail="not enough free RAM for any local model")
     pulled = pull_model(spec.model_id, "native_onnx")
     if not pulled.ok:
         raise HTTPException(status_code=400, detail=pulled.message)
@@ -794,6 +839,51 @@ async def models_auto(request: Request):
     started = lifecycle.start(spec.model_id)
     return {"ok": bool(started.get("ok")), "model_id": spec.model_id,
             "message": started.get("message", "")}
+
+
+@router.get("/engine")
+async def engine_info(request: Request):
+    """Is the llama.cpp engine installed, and is a model running on it?"""
+    from ...intelligence.llama_engine import engine_status
+
+    return engine_status()
+
+
+@router.post("/engine/install")
+async def engine_install(request: Request, body: dict[str, Any]):
+    """Download the official llama.cpp build (vulkan | cpu | hip). Long call."""
+    from ...intelligence.llama_engine import install_engine
+
+    result = install_engine(str(body.get("backend", "vulkan")))
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("message", "install failed"))
+    return result
+
+
+@router.get("/models/cloud/openrouter")
+async def openrouter_models(request: Request, free_only: bool = False):
+    """OpenRouter's model list (public); ``free_only`` keeps zero-price ones."""
+    from ...providers.adapters.openrouter import list_openrouter_models, stored_key
+
+    models = list_openrouter_models()
+    if free_only:
+        models = [m for m in models if m["free"]]
+    return {"models": models, "has_key": bool(stored_key())}
+
+
+@router.post("/models/cloud")
+async def models_cloud(request: Request, body: dict[str, Any]):
+    """Use a hosted model (OpenRouter). The key goes to the encrypted vault."""
+    from ...intelligence.model_manager import add_cloud_tier
+
+    result = add_cloud_tier(
+        str(body.get("provider", "openrouter")), str(body.get("model", "")),
+        tier=str(body.get("tier", "deep_tier")) or "deep_tier",
+        api_key=str(body.get("api_key", "")),
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=400, detail=result.get("error", "failed"))
+    return result
 
 
 @router.post("/models/remote")
@@ -872,14 +962,19 @@ async def models_activate(request: Request, body: dict[str, Any]):
     Native models run inside C.A.R.L.A.'s own process, so activating
     one is all it takes — no Ollama, no daemon, nothing to start.
     """
-    from ...intelligence.model_manager import activate_native_model
+    from ...intelligence.model_manager import (
+        activate_gguf_model, activate_native_model, find_gguf, native_model_dir,
+    )
 
     model_id = str(body.get("model_id", "")).strip()
     if not model_id:
         raise HTTPException(status_code=400, detail="model_id is required.")
     tier = str(body.get("tier", "fast_tier")).strip() or "fast_tier"
 
-    result = activate_native_model(model_id, tier)
+    if find_gguf(model_id) is not None and not native_model_dir(model_id).exists():
+        result = activate_gguf_model(model_id, tier)
+    else:
+        result = activate_native_model(model_id, tier)
     if not result.get("ok"):
         raise HTTPException(
             status_code=400, detail=result.get("error", "could not activate")

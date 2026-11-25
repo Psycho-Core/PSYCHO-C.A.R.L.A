@@ -76,7 +76,7 @@ stt_compute_type = "int8"
 # --- Wake word ---
 wake_word         = "hey carla"
 wake_word_enabled = true
-wake_word_engine  = "openwakeword"
+wake_word_engine  = "transcript"   # or "openwakeword" + wake_model_path
 
 # --- Behaviour ---
 barge_in        = true
@@ -193,14 +193,19 @@ you want C.A.R.L.A. to read code aloud verbatim.
 
 ## Wake word
 
-`openWakeWord` ships a model for "hey jarvis" out of the box. The wake phrase
-you configure is `"hey carla"` by default; the detector itself is a small
-acoustic model.
+Default (`wake_word_engine = "transcript"`): no trained model is needed.
+While someone is speaking, short utterances are transcribed by the speech
+recogniser (`faster-whisper`) and checked for the phrase — tolerant of
+"hey karla" / "hay carlo" style mis-hearings, and of a command in the same
+breath ("hey carla, what's the weather" runs the command directly). Silence
+is never transcribed, so the cost is small. Needs the `voice` extra.
+Anything that merely *mentions* Carla later in a sentence does not wake her.
 
-If you want a genuinely different phrase, you'd need to train or obtain an
-appropriate openWakeWord model — the configuration accepts a model name via
-`[voice].wake_word_engine` handling in `voice/stt.py`
-(`WakeWordDetector(wake_word, model=...)`).
+Optional (`wake_word_engine = "openwakeword"` + `wake_model_path`): a
+dedicated acoustic model is lighter and more reliable in noise, but you must
+train a "hey carla" model first (openWakeWord's training notebook). The
+bundled openWakeWord models respond to *other* phrases ("hey jarvis"), so
+none is used by default.
 
 When the wake word fires:
 1. The HUD shows a toast and the Voice Core pulses.
@@ -279,7 +284,7 @@ Everything runs on CPU. Rough expectations on a modern laptop:
 | Kokoro TTS | ~1.5s per sentence | 82M params, single thread |
 | Piper TTS | ~0.3s per sentence | Much faster, ONNX |
 | faster-whisper `base.en` | ~0.4x realtime | int8, 2 threads |
-| openWakeWord | <5ms per chunk | ONNX, negligible |
+| Transcript wake | one short transcription per utterance | CPU, only when speech is heard |
 
 Use Piper if latency matters more than voice quality.
 

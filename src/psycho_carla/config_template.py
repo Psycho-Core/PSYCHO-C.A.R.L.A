@@ -52,7 +52,7 @@ context_window      = 8192
 #  `deep_tier` at a 70B, and agents can request "fast" or "deep" without ever
 #  knowing what that means.
 #
-#  provider   : ollama | openai_compat | llamacpp | generic_http
+#  provider   : native_gguf | native_onnx | openrouter | openai_compat | llamacpp | ollama | generic_http
 #  model      : the provider's model identifier
 #  base_url   : endpoint (overrides [engine.adapters.*])
 #  api_key_env: name of the environment variable holding your key
@@ -60,29 +60,32 @@ context_window      = 8192
 # =============================================================================
 
 # --- fast_tier: quick, cheap, good enough for most turns -------------------
+# Runs a GGUF model with C.A.R.L.A.'s own llama.cpp engine (no Ollama).
+# Pick the model in the HUD: Models -> Install engine -> Download -> Use this.
+# Until then she answers with the built-in offline responder.
 [tiers.fast_tier]
-provider       = "ollama"
-model          = "qwen2.5:7b-instruct"
+provider       = "native_gguf"
+model          = ""
 temperature    = 0.7
 max_tokens     = 2048
-description    = "Default workhorse. Local Ollama instance."
+description    = "Default workhorse. C.A.R.L.A.'s own llama.cpp engine."
 
 # --- deep_tier: heavy reasoning, research, difficult synthesis --------------
+# Point this at a big model: a 14B/32B GGUF on your GPU PC, or a hosted
+# model through OpenRouter (Models -> Cloud models).
 [tiers.deep_tier]
-provider       = "ollama"
-model          = "qwen2.5:14b-instruct"
+provider       = "native_gguf"
+model          = ""
 temperature    = 0.4
 max_tokens     = 4096
 top_p          = 0.92
 description    = "Deep reasoning. Research, planning, hard analysis."
 
-# --- vision_tier: multimodal ------------------------------------------------
-[tiers.vision_tier]
-provider       = "ollama"
-model          = "llama3.2-vision:11b"
-temperature    = 0.6
-max_tokens     = 2048
-description    = "Multimodal. Screenshots, images, documents."
+# --- vision_tier: multimodal (optional) -------------------------------------
+# [tiers.vision_tier]
+# provider       = "openrouter"
+# model          = "qwen/qwen2.5-vl-72b-instruct"
+# description    = "Multimodal. Screenshots, images, documents."
 
 # --- native_tier: runs INSIDE C.A.R.L.A., no Ollama needed ---------------
 # This tier executes the model in C.A.R.L.A.'s own process on the CPU, so
@@ -126,13 +129,14 @@ description    = "Multimodal. Screenshots, images, documents."
 # [engine] — Pillar 2: the adapter layer
 # -----------------------------------------------------------------------------
 [engine]
-default_adapter = "ollama"
+default_adapter = "native_gguf"
 detect_hardware = true
-fallback_chain  = ["ollama", "openai_compat"]
+fallback_chain  = ["native_gguf", "openrouter"]
 
-[engine.adapters.ollama]
-base_url = "http://localhost:11434"
-timeout  = 300
+# Optional: only if you choose to run Ollama yourself.
+# [engine.adapters.ollama]
+# base_url = "http://localhost:11434"
+# timeout  = 300
 
 [engine.adapters.openai_compat]
 base_url = "http://localhost:1234/v1"
@@ -465,7 +469,8 @@ stt_compute_type = "int8"
 
 wake_word         = "hey carla"
 wake_word_enabled = true
-wake_word_engine  = "openwakeword"
+# wake_model_path = "C:/path/to/hey_carla.onnx"   # only for engine = "openwakeword"
+wake_word_engine  = "transcript"   # transcript (works today) | openwakeword (needs wake_model_path)
 
 barge_in        = true
 channel_split   = true

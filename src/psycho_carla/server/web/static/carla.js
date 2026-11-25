@@ -1118,10 +1118,18 @@ function mmRenderCatalog(data, engine) {
       const d = el('div', 'mem-meta', m.description);
       item.appendChild(d);
     }
+    const md = m.metadata || {};
+    if (md.uncensored || md.target) {
+      const tags = el('div', 'mem-meta',
+        [md.uncensored ? 'uncensored' : '', md.target ? 'for: ' + md.target : '',
+         md.verified === false ? 'file name unverified' : ''].filter(Boolean).join(' · '));
+      tags.style.color = 'var(--carla-cyan)';
+      item.appendChild(tags);
+    }
     if (engine === 'ollama' || engine === 'llamacpp' ||
-        engine === 'native_onnx') {
+        engine === 'native_onnx' || engine === 'native_gguf') {
       // Warn before a download that will not fit in memory.
-      if (engine === 'native_onnx' && mmRam && m.ram_gb) {
+      if ((engine === 'native_onnx' || engine === 'native_gguf') && mmRam && m.ram_gb) {
         const need = m.ram_gb;
         const have = mmRam.free_gb || mmRam.ram_gb;
         if (need > have) {
@@ -1169,7 +1177,7 @@ function mmRenderLocal(data) {
     }
 
     const actions = el('div', 'mem-actions');
-    if (m.engine === 'native_onnx') {
+    if (m.engine === 'native_onnx' || m.engine === 'native_gguf') {
       // Start / Stop loads the model into memory and frees it again.
       if (m.running) {
         const stop = el('button', 'btn sm', 'Stop');
@@ -1355,7 +1363,7 @@ async function mmRefreshLocal() {
 }
 
 async function mmRefreshCatalog() {
-  const engine = ($('mmEngine') || {}).value || 'ollama';
+  const engine = ($('mmEngine') || {}).value || 'native_gguf';
   const status = $('mmStatus');
   if (status) status.textContent = 'Loading catalog…';
   try {
@@ -1575,4 +1583,64 @@ document.addEventListener('DOMContentLoaded', function () {
   bind('btnSetupModels', function () { mmOpen(); mmDeviceInit(); });
   bind('btnSetupDismiss', function () { lsSet('carla.setupDismissed', '1'); $('setupBanner').hidden = true; });
   setTimeout(function () { initAgentFilter(); refreshSetupBanner(); }, 600);
+});
+
+
+/* ---- Engine install + OpenRouter ---------------------------------------- */
+async function mmEngineRefresh() {
+  const info = $('mmEngineInfo');
+  if (!info) return;
+  try {
+    const e = await api('/api/engine');
+    info.textContent = e.installed
+      ? 'Installed (' + (e.backend || 'unknown backend') + '). ' + (e.server.running ? 'A model is running.' : 'No model running.')
+      : 'Not installed. Needed to run GGUF models — about 30–150 MB download.';
+    const btn = $('mmEngineInstall');
+    if (btn) btn.textContent = e.installed ? 'Reinstall / switch backend' : 'Install engine';
+  } catch (err) { info.textContent = 'Could not read engine status.'; }
+}
+
+async function mmEngineInstall() {
+  const btn = $('mmEngineInstall');
+  if (btn) btn.disabled = true;
+  mmSay('Downloading the llama.cpp engine …');
+  try {
+    const r = await postJSON('/api/engine/install', { backend: $('mmBackend').value });
+    mmSay('✓ ' + r.message);
+  } catch (e) { mmSay('✗ ' + e.message); }
+  if (btn) btn.disabled = false;
+  mmEngineRefresh();
+}
+
+async function mmOrLoad() {
+  mmSay('Loading OpenRouter models …');
+  try {
+    const d = await api('/api/models/cloud/openrouter?free_only=' + ($('mmOrFree').checked ? 'true' : 'false'));
+    const dl = $('mmOrList'); dl.innerHTML = '';
+    d.models.slice(0, 400).forEach(function (m) {
+      const o = document.createElement('option');
+      o.value = m.id; o.label = (m.free ? '[free] ' : '') + (m.name || m.id);
+      dl.appendChild(o);
+    });
+    mmSay(d.models.length + ' models loaded' + (d.has_key ? '' : ' — add your API key to use one'));
+  } catch (e) { mmSay('✗ ' + e.message); }
+}
+
+async function mmOrGo() {
+  try {
+    const r = await postJSON('/api/models/cloud', {
+      provider: 'openrouter', model: $('mmOrModel').value, tier: $('mmOrTier').value,
+      api_key: $('mmOrKey').value,
+    });
+    $('mmOrKey').value = '';
+    mmSay('✓ ' + r.message + ' — restart the console to use it.');
+  } catch (e) { mmSay('✗ ' + e.message); }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  const bind = function (id, fn) { const b = $(id); if (b) b.addEventListener('click', fn); };
+  bind('mmEngineInstall', mmEngineInstall);
+  bind('mmOrLoad', mmOrLoad);
+  bind('mmOrGo', mmOrGo);
+  ['btnModels', 'btnHdrModels', 'btnSetupModels'].forEach(function (id) { bind(id, mmEngineRefresh); });
 });

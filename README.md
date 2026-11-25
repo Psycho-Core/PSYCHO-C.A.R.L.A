@@ -10,13 +10,13 @@ in one Python package (`psycho_carla`).
 ## What you get
 
 - **26 agents**, **96 tools**, 28 knowledge connectors, 32 messaging channels, 20 skills
-- **Runs with no model** (built-in offline responder), or with any model:
-  built-in CPU engine (ONNX), Ollama, llama.cpp, LM Studio / any OpenAI-compatible
-  server, vLLM, a model on **another PC**, or cloud APIs
-- **Model Manager**: download, start, stop, delete, *free memory*, custom
-  models (any Ollama tag or Hugging Face repo), CPU / GPU (DirectML) switch
+- **Runs with no model** (built-in offline responder), or with any model, **without Ollama**:
+  its own llama.cpp engine (GGUF 3B–32B, CPU or GPU), tiny in-process ONNX models,
+  **OpenRouter** (free and paid cloud models), or a model on **another PC**
+- **Model Manager**: install engine, download, start, stop, delete, *free memory*,
+  custom models (any Hugging Face repo / GGUF file), OpenRouter, CPU / GPU switch
 - Persistent memory, scheduler, MCP client + server, A2A, workflows, local telemetry
-- Voice (optional): Kokoro / Piper TTS, faster-whisper STT, "hey carla" wake word
+- Voice (optional): Kokoro / Piper TTS, faster-whisper STT, working "hey carla" wake word, voice audition page
 - Export your conversations, or a fine-tuning dataset, as files that never leave your PC
 
 ## Install (Windows 11, Python 3.10+)
@@ -24,24 +24,24 @@ in one Python package (`psycho_carla`).
 ```powershell
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -e ".[native]"      # core + built-in CPU engine
+pip install -e .                # core (the llama.cpp engine is downloaded from the HUD)
 carla init                      # writes psycho_carla.toml
 carla doctor                    # should end with "Ready"
 carla serve                     # open http://127.0.0.1:8787
 ```
 
-Extras: `".[voice]"` voice · `".[native-gpu]"` DirectML GPU (see
-[docs/MODELS.md](docs/MODELS.md)) · `".[desktop]"` native window · `".[dev]"` tests.
+Extras: `".[voice]"` voice + wake word · `".[native]"` tiny ONNX models ·
+`".[desktop]"` native window · `".[dev]"` tests. See [docs/MODELS.md](docs/MODELS.md).
 Or run `.\install.ps1 -Voice`.
 
 ## Get a model (pick one)
 
-1. **Easiest:** open the console and click **Auto-pick a model** — it chooses
-   the best built-in model that fits your free RAM, downloads and starts it.
-2. **Model Manager** (`Models` button): browse the catalog, or type any
-   Ollama tag / Hugging Face repo into **Custom model**.
-3. **Another PC:** `carla model remote 192.168.1.50 qwen3:8b` points `deep_tier`
-   at a stronger machine (e.g. your GPU desktop) on your network.
+1. **Easiest:** click **Auto-pick a model** — installs the engine, picks the best
+   model that fits your free RAM (uncensored preferred on a tie), downloads and starts it.
+2. **Model Manager** (`Models`): **Install engine**, then download from the catalog
+   (3B for a small PC … 14B / 32B Qwen2.5-Coder for a big GPU), or **Custom model**.
+3. **Cloud:** `carla model cloud qwen/qwen-2.5-coder-32b-instruct --ask-key` (OpenRouter).
+4. **Another PC:** `carla model remote 192.168.1.50 MODEL` uses a stronger machine.
 
 Everything is also available from the CLI: `carla model --help`.
 
@@ -49,7 +49,7 @@ Everything is also available from the CLI: `carla model --help`.
 
 ```text
 carla chat | ask "…"          talk to it
-carla model auto|custom|free|device|remote|list|local
+carla engine install|status · carla model auto|custom|cloud|free|device|remote|list|local
 carla export --format markdown|json|training -o out.md
 carla agents | tiers | memory | cron | doctor
 ```

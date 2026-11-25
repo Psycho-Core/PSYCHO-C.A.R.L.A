@@ -326,9 +326,10 @@
     <span class="panel-title">Model Manager</span>
     <span class="editor-path" id="mmHw">—</span>
     <select id="mmEngine" style="width:auto; margin-left:auto;">
-      <option value="native_onnx">native (runs inside C.A.R.L.A.)</option>
-      <option value="ollama">ollama</option>
-      <option value="llamacpp">llamacpp (GGUF)</option>
+      <option value="native_gguf">GGUF — built-in llama.cpp engine (3B–32B)</option>
+      <option value="native_onnx">tiny CPU models (ONNX, runs in-process)</option>
+      <option value="ollama">ollama (optional, you run it)</option>
+      <option value="llamacpp">llama-server (you run it)</option>
       <option value="vllm">vllm</option>
       <option value="sglang">sglang</option>
     </select>
@@ -350,6 +351,31 @@
       <span class="editor-path" id="mmStatus"></span>
     </div>
     <div class="mm-tools">
+      <div class="mm-card">
+        <div class="panel-title">Engine</div>
+        <p class="editor-path" id="mmEngineInfo">Checking…</p>
+        <div class="mm-row">
+          <select id="mmBackend" style="width:auto;">
+            <option value="vulkan">Vulkan (any GPU — AMD/NVIDIA/Intel)</option>
+            <option value="cpu">CPU only</option>
+            <option value="hip">HIP (AMD ROCm)</option>
+          </select>
+          <button class="btn sm primary" id="mmEngineInstall">Install engine</button>
+        </div>
+      </div>
+      <div class="mm-card">
+        <div class="panel-title">Cloud models (OpenRouter)</div>
+        <p class="editor-path">Free and paid hosted models. Your key is stored encrypted, never in the config file.</p>
+        <div class="mm-row">
+          <input type="password" id="mmOrKey" placeholder="OpenRouter API key" autocomplete="off" style="flex:1 1 150px;">
+          <input type="text" id="mmOrModel" list="mmOrList" placeholder="model id, e.g. qwen/qwen-2.5-coder-32b-instruct" style="flex:2 1 220px;">
+          <datalist id="mmOrList"></datalist>
+          <label class="editor-path"><input type="checkbox" id="mmOrFree"> free only</label>
+          <select id="mmOrTier" style="width:auto;"><option value="deep_tier">deep_tier</option><option value="fast_tier">fast_tier</option></select>
+          <button class="btn sm" id="mmOrLoad">Load list</button>
+          <button class="btn sm primary" id="mmOrGo">Use</button>
+        </div>
+      </div>
       <div class="mm-card">
         <div class="panel-title">Custom model</div>
         <p class="editor-path">Any Ollama tag, or a Hugging Face repo (<code>owner/name</code>) for the selected engine.</p>

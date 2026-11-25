@@ -17,7 +17,9 @@ from typing import Any, Callable
 
 from ..core.config import CarlaConfig
 from ..core.persona import ChannelPayload, Persona
-from .stt import BargeIn, Microphone, WakeWordDetector, build_stt
+from .stt import (
+    BargeIn, Microphone, TranscriptWakeDetector, WakeWordDetector, build_stt,
+)
 from .tts import TTSEngine, build_tts, configure_espeak_environment
 
 
@@ -87,7 +89,12 @@ class VoiceSystem:
             download_root=config.models_dir,
         )
         self.mic = Microphone()
-        self.wake = WakeWordDetector(vc.wake_word)
+        model_path = getattr(vc, "wake_model_path", "") or ""
+        if getattr(vc, "wake_word_engine", "transcript") == "openwakeword" and model_path:
+            self.wake = WakeWordDetector(vc.wake_word, model_path)
+        else:
+            # Works with no trained model: listen for the phrase itself.
+            self.wake = TranscriptWakeDetector(self.stt, vc.wake_word)
         self.barge_in = BargeIn(self.mic)
 
         self.state.tts_backend = self.tts.name
@@ -221,7 +228,8 @@ class VoiceSystem:
         if not self.state.mic_available:
             return
         if not self.wake.available():
-            self.state.errors.append("openWakeWord not installed")
+            self.state.errors.append(
+                "wake word unavailable — install the voice extra (faster-whisper)")
             self.state.wake_enabled = False
             return
 
@@ -244,8 +252,12 @@ class VoiceSystem:
             if event.detected:
                 self._emit("wake_word", {"score": event.score,
                                          "phrase": self.config.voice.wake_word})
-                # Listen for the command that follows the wake word.
-                threading.Thread(target=self._command_after_wake, daemon=True).start()
+                if getattr(event, "remainder", ""):
+                    # "hey carla, what time is it" — the command was in the same breath.
+                    self._emit("voice_command", {"text": event.remainder})
+                else:
+                    # Listen for the command that follows the wake word.
+                    threading.Thread(target=self._command_after_wake, daemon=True).start()
 
     def _command_after_wake(self) -> None:
         time.sleep(0.35)  # small gap so we don't transcribe the wake word itself

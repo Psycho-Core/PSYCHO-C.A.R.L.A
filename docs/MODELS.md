@@ -8,9 +8,44 @@ C.A.R.L.A. never bundles a model. You point a **tier** (`fast_tier`,
 
 | Engine | Where it runs | Notes |
 |---|---|---|
-| `native_onnx` | inside C.A.R.L.A. (CPU, optional DirectML GPU) | no other software; small models |
-| Ollama / llama.cpp / LM Studio / vLLM | separate process | best for 7B+ and GPUs |
+| **`native_gguf`** (default) | C.A.R.L.A. downloads llama.cpp and runs it for you, hidden | GGUF models 3B–32B; CPU, Vulkan GPU or HIP |
+| `native_onnx` | inside C.A.R.L.A. (CPU, optional DirectML GPU) | tiny models only (≤1.5B) |
+| OpenRouter | cloud | free and paid hosted models; `carla model cloud MODEL --ask-key` |
 | Remote | another PC on your network | `carla model remote HOST MODEL` |
+| Ollama / LM Studio / vLLM | separate app you run | optional; not needed |
+
+### The built-in engine (no Ollama)
+
+```powershell
+carla engine install --backend vulkan   # any GPU: AMD RX 7800 XT, NVIDIA, Intel
+carla engine install --backend cpu      # the OptiPlex (no GPU)
+carla model local ; carla model pull gguf:qwen2.5-coder-14b-uncensored --engine native_gguf
+```
+
+Or do it all in the HUD: **Models → Install engine → Download → Use this → Start**.
+Start launches `llama-server` on `127.0.0.1` (never exposed); Stop / Free
+memory shuts it down. GPU layers are chosen from model size (a 32B model on a
+16 GB card is split between GPU and RAM — slower but it runs).
+
+### Catalog (GGUF)
+
+| Model | Size | For |
+|---|---|---|
+| Qwen2.5-Coder 1.5B / 3B | 1.1 / 2.1 GB | OptiPlex (8 GB RAM) — official, not uncensored |
+| **Llama 3.2 3B abliterated** | 2.2 GB | OptiPlex — uncensored chat |
+| Qwen2.5-Coder 7B | 4.7 GB | tight on 8 GB; fine on the main PC |
+| Qwen2.5-Coder 14B (official / **abliterated**) | 9 GB | 16 GB GPU fits fully |
+| **Qwen2.5-Coder 32B abliterated** | 19.9 GB | 16 GB GPU + 32 GB RAM, partial offload |
+
+Repos were found by web search (2026-11-25); exact file names follow each
+uploader's convention and were not fetched from the build sandbox. If a
+download reports "file not found", copy the file name from the repo page into
+**Custom model**. "Abliterated" = refusals removed by editing the weights;
+check each model's licence and card.
+
+**Ajax (PewDiePie):** a Qwen3.5-9B fine-tune. As of the last reports there
+were no public weights. When a Hugging Face GGUF exists, add it with
+**Custom model** (repo + `.gguf` file). It is too big for the OptiPlex anyway.
 
 ## Controls (HUD Model Manager and CLI)
 

@@ -401,7 +401,8 @@ class VoiceConfig:
     stt_compute_type: str = "int8"
     wake_word: str = "hey carla"
     wake_word_enabled: bool = True
-    wake_word_engine: str = "openwakeword"
+    wake_word_engine: str = "transcript"   # transcript | openwakeword
+    wake_model_path: str = ""              # custom openWakeWord .onnx/.tflite for "hey carla"
     barge_in: bool = True
     channel_split: bool = True
     speak_min_chars: int = 12           # below this, don't bother vocalising

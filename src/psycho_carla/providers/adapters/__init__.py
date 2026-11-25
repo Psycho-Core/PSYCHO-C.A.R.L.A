@@ -23,7 +23,9 @@ from .engines import (
 from .generic_http import GenericHttpAdapter
 from .llamacpp import LlamaCppAdapter
 from .local_fallback import LocalFallbackAdapter
+from .native_gguf import NativeGgufAdapter
 from .native_onnx import NativeOnnxAdapter
+from .openrouter import OpenRouterAdapter
 from .ollama import OllamaAdapter
 from .openai_compat import OpenAICompatAdapter
 
@@ -32,6 +34,8 @@ from .openai_compat import OpenAICompatAdapter
 from ..base import available_adapters, build_adapter, get_adapter_class
 
 __all__ = [
+    "NativeGgufAdapter",
+    "OpenRouterAdapter",
     "AfmAdapter",
     "AppleFmAdapter",
     "CloudAdapter",

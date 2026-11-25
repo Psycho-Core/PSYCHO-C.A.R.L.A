@@ -52,6 +52,7 @@ class ModelLifecycle:
         self._lock = threading.RLock()
         self._adapter: Any = None
         self._adapter_model_id: str = ""
+        self._gguf_id: str = ""
         self._states: dict[str, ModelState] = {}
 
     # ------------------------------------------------------------------
@@ -109,7 +110,13 @@ class ModelLifecycle:
         is the whole point of running it natively rather than paying the
         load cost on every message.
         """
-        from psycho_carla.intelligence.model_manager import native_model_dir
+        from psycho_carla.intelligence.model_manager import (
+            find_gguf, native_model_dir,
+        )
+
+        gguf = None if model_path else find_gguf(model_id)
+        if gguf is not None and not native_model_dir(model_id).exists():
+            return self._start_gguf(model_id, gguf)
 
         with self._lock:
             if self._adapter is not None:
@@ -171,9 +178,30 @@ class ModelLifecycle:
             "already_running": False,
         }
 
+    def _start_gguf(self, model_id: str, path: Any) -> dict[str, Any]:
+        from psycho_carla.intelligence.llama_engine import server
+        from psycho_carla.providers.adapters.native_onnx import configured_device
+
+        with self._lock:
+            if self._adapter is not None:
+                self._stop_locked()
+            result = server.start(str(path), device=configured_device())
+            if result.get("ok"):
+                self._gguf_id = model_id
+            return {"ok": bool(result.get("ok")), "model_id": model_id,
+                    "message": result.get("message", ""),
+                    "already_running": bool(result.get("already_running"))}
+
     def stop(self, model_id: str = "") -> dict[str, Any]:
         """Unload the running model and free the memory."""
+        from psycho_carla.intelligence.llama_engine import server
+
         with self._lock:
+            if self._gguf_id and (not model_id or model_id == self._gguf_id):
+                name, self._gguf_id = self._gguf_id, ""
+                server.stop()
+                return {"ok": True, "model_id": name, "message": f"'{name}' stopped",
+                        "was_running": True}
             if self._adapter is None:
                 return {
                     "ok": True,
@@ -215,7 +243,13 @@ class ModelLifecycle:
 
     def status(self) -> dict[str, Any]:
         """The running model, if any."""
+        from psycho_carla.intelligence.llama_engine import server
+
         with self._lock:
+            if self._gguf_id and server.running:
+                return {"running": True, "model_id": self._gguf_id,
+                        "engine": "native_gguf",
+                        "device": f"gpu layers: {server.gpu_layers}"}
             if self._adapter is None:
                 return {"running": False, "model_id": ""}
             return {
@@ -247,7 +281,13 @@ class ModelLifecycle:
 
         before = _avail()
         released: list[str] = []
+        from psycho_carla.intelligence.llama_engine import server
+
         with self._lock:
+            if self._gguf_id or server.running:
+                released.append(self._gguf_id or "llama.cpp engine")
+                self._gguf_id = ""
+                server.stop()
             if self._adapter is not None:
                 released.append(self._adapter_model_id)
                 self._stop_locked()

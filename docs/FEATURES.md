@@ -27,6 +27,13 @@ smoke suite is 46/46 (see `docs/audits/PARITY-AUDIT-7.md`,
   first-class metrics), and an efficiency summary in HUD, CLI, and API.
 
 ## A2. Intelligence & models
+- **Managed llama.cpp engine** (`native_gguf`): C.A.R.L.A. downloads the
+  official llama.cpp build and runs GGUF models (3B–32B) itself as a hidden
+  child process — no Ollama. Backends: Vulkan (any GPU), CPU, HIP.
+  GGUF catalog tuned for an 8 GB PC (3B uncensored) and a 16 GB-GPU PC
+  (Qwen2.5-Coder 14B / 32B, official and abliterated).
+  Verified with a fake llama-server in tests; not yet with the real binary.
+- **OpenRouter** cloud models (free and paid); key kept in the encrypted vault.
 - Model Manager (HUD + CLI): download / start / stop / delete, **custom model**
   (any Ollama tag or Hugging Face repo), **free memory**, **auto-pick** by free
   RAM, **remote PC** tiers, native-engine **device switch (CPU / DirectML GPU)**.
@@ -123,9 +130,9 @@ smoke suite is 46/46 (see `docs/audits/PARITY-AUDIT-7.md`,
    conversation; not started.
 3. **One-click Windows experience** — system-tray icon, start-on-login,
    background daemon polish, and an auto-updater.
-4. **Custom “Hey Carla” wake model** — today the wake phrase rides on a
-   third-party pretrained model file (`hey_jarvis`); a trained custom
-   wake word would make voice feel finished.
+4. **Dedicated “Hey Carla” acoustic model** — wake word works today by
+   transcribing speech; a trained openWakeWord model would be lighter and
+   steadier in noise (`wake_model_path` is ready for it).
 5. **Memory controls in the HUD** — timeline view, per-memory “forget,”
    import/export, and one-click backup/restore of config + memory + skills.
 6. **Proactive routines productised** — morning brief, reminders, and

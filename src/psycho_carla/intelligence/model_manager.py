@@ -631,6 +631,17 @@ def pull_model(
         tag = spec.ollama_tag if spec else model_id
         return ollama_pull(tag, progress=progress)
 
+    if engine == "native_gguf":
+        if spec is None or not spec.hf_repo or not spec.gguf_file:
+            return DownloadResult(
+                False, model_id, engine,
+                message=(f"'{model_id}' is not a catalog GGUF model — use Custom model "
+                         "with a Hugging Face repo and file name"),
+            )
+        result = hf_download(spec.hf_repo, spec.gguf_file, progress=progress)
+        result.engine = "native_gguf"
+        return result
+
     if engine in ("llamacpp", "llama_cpp"):
         if spec is None:
             return DownloadResult(
@@ -759,7 +770,7 @@ def local_models() -> list[dict]:
             size_gb = 0.0
         found.append({
             "model_id": path.stem,
-            "engine": "llamacpp",
+            "engine": "native_gguf",
             "size_gb": size_gb,
             "path": str(path),
             "details": {"file": path.name},
@@ -944,7 +955,12 @@ def pull_custom(
             False, ref, engine,
             message=f"'{ref}' is not a Hugging Face repo — expected owner/name",
         )
-    if engine in ("llamacpp", "llama_cpp"):
+    if engine in ("llamacpp", "llama_cpp", "native_gguf"):
+        if engine == "native_gguf" and not filename.lower().endswith(".gguf"):
+            return DownloadResult(
+                False, ref, engine,
+                message="enter the exact .gguf file name from the repository page",
+            )
         return hf_download(ref, filename or None, progress=progress)
     if engine in ("native_onnx", "native", "onnx"):
         model_id = "native:custom-" + ref.replace("/", "--").lower()
@@ -1039,3 +1055,94 @@ def add_remote_tier(
     save_config(config)
     return {"ok": True, "tier": tier, "base_url": base, "model": model.strip(),
             "message": f"'{tier}' now uses {model.strip()} on {host}"}
+
+
+# ---------------------------------------------------------------------------
+# GGUF (managed llama.cpp) models
+# ---------------------------------------------------------------------------
+
+def find_gguf(model_id: str) -> Path | None:
+    """The downloaded ``.gguf`` file for a catalog id, file name or stem."""
+    from .model_catalog import find_model_spec
+
+    base = models_dir()
+    names: list[str] = []
+    spec = find_model_spec(model_id) if model_id.startswith("gguf:") else None
+    if spec is not None and spec.gguf_file:
+        names.append(spec.gguf_file)
+    names += [model_id, model_id + ".gguf"]
+    for path in base.rglob("*.gguf"):
+        if path.name in names or path.stem == model_id:
+            return path
+    return None
+
+
+def best_gguf_model(free_ram_gb: float | None = None, max_params_b: float = 14.0,
+                    prefer_uncensored: bool = False):
+    """Largest catalog GGUF model that fits free RAM (capped at ``max_params_b``)."""
+    from .model_catalog import GGUF_MODELS
+
+    if free_ram_gb is None:
+        free_ram_gb = _free_memory_gb()
+    fits = [m for m in GGUF_MODELS
+            if m.ram_gb <= max(free_ram_gb - 1.0, 0) and m.parameter_count_b <= max_params_b
+            and (not prefer_uncensored or m.metadata.get("uncensored"))]
+    # Biggest that fits; on a tie the uncensored build wins (the owner's preference).
+    return max(fits, key=lambda m: (m.parameter_count_b, bool(m.metadata.get('uncensored')))) if fits else None
+
+
+def activate_gguf_model(model_id: str, tier: str = "fast_tier") -> dict:
+    """Point a tier at a downloaded GGUF model (provider ``native_gguf``)."""
+    from ..core.config import TierConfig, load_config, save_config
+
+    path = find_gguf(model_id)
+    if path is None:
+        return {"ok": False, "error": f"'{model_id}' is not downloaded yet"}
+    config = load_config()
+    existing = config.intelligence.tiers.get(tier)
+    config.intelligence.tiers[tier] = TierConfig(
+        provider="native_gguf", model=model_id,
+        temperature=existing.temperature if existing else 0.7,
+        max_tokens=existing.max_tokens if existing else 2048,
+        description=f"{model_id}, run by C.A.R.L.A.'s own llama.cpp engine",
+        extra={"model_path": str(path)},
+    )
+    save_config(config)
+    return {"ok": True, "tier": tier, "model_id": model_id, "model_path": str(path),
+            "message": f"'{tier}' now runs {model_id}"}
+
+
+def add_cloud_tier(provider: str, model: str, tier: str = "deep_tier",
+                   api_key: str = "") -> dict:
+    """Point a tier at a hosted model. ``provider`` is ``openrouter`` or ``openai_compat``.
+
+    An API key given here is stored in the encrypted vault (never in the
+    config file); the tier reads it from the vault or ``OPENROUTER_API_KEY``.
+    """
+    provider = (provider or "openrouter").lower()
+    if provider != "openrouter":
+        return {"ok": False, "error": "only 'openrouter' is configured here; use the "
+                                      "config file for other OpenAI-compatible endpoints"}
+    if not model.strip():
+        return {"ok": False, "error": "a model id is required, e.g. qwen/qwen-2.5-coder-32b-instruct"}
+    if api_key.strip():
+        from ..providers.adapters.openrouter import KEY_NAME
+        from ..security.vault import Vault
+
+        Vault().set(KEY_NAME, api_key.strip())
+    from ..core.config import TierConfig, load_config, save_config
+
+    config = load_config()
+    existing = config.intelligence.tiers.get(tier)
+    config.intelligence.tiers[tier] = TierConfig(
+        provider="openrouter", model=model.strip(),
+        temperature=existing.temperature if existing else 0.7,
+        max_tokens=existing.max_tokens if existing else 2048,
+        description=f"{model.strip()} via OpenRouter",
+    )
+    save_config(config)
+    from ..providers.adapters.openrouter import stored_key
+
+    note = "" if stored_key() else " — add an API key (Model Manager → Cloud models)"
+    return {"ok": True, "tier": tier, "model": model.strip(),
+            "message": f"'{tier}' now uses {model.strip()} via OpenRouter{note}"}

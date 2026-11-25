@@ -132,6 +132,58 @@ class ModelSpec:
 # The catalog
 # ---------------------------------------------------------------------------
 
+#: GGUF models that C.A.R.L.A. runs itself through its managed llama.cpp
+#: engine (no Ollama). Repos were found by web search on 2026-11-25; file
+#: names follow each uploader's convention and have NOT been fetched from
+#: this sandbox, so ``verified`` is False — if a download says "file not
+#: found", use Custom model with the exact file name from the repo page.
+def _gguf(model_id, name, params, repo, file, size, ram, vram, desc, lic,
+          uncensored=False, target="main-pc", ctx=32768):
+    return ModelSpec(
+        model_id=model_id, name=name, parameter_count_b=params,
+        context_length=ctx, supported_engines=("native_gguf", "llamacpp"),
+        provider="huggingface", description=desc, hf_repo=repo, gguf_file=file,
+        quantisation="Q4_K_M", size_gb=size, ram_gb=ram, vram_gb=vram, license=lic,
+        metadata={"uncensored": uncensored, "verified": False, "target": target},
+    )
+
+
+GGUF_MODELS: tuple[ModelSpec, ...] = (
+    # --- small: OptiPlex-class PCs (8 GB RAM, no GPU) ---------------------
+    _gguf("gguf:qwen2.5-coder-1.5b", "Qwen2.5-Coder 1.5B (GGUF)", 1.5,
+          "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF", "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
+          1.1, 2.5, 0, "Fastest coder for old PCs. Not uncensored.", "apache-2.0", target="optiplex"),
+    _gguf("gguf:llama-3.2-3b-uncensored", "Llama 3.2 3B abliterated (GGUF)", 3.0,
+          "mradermacher/Llama-3.2-3B-Instruct-abliterated-GGUF",
+          "Llama-3.2-3B-Instruct-abliterated.Q4_K_M.gguf",
+          2.24, 3.8, 0, "Uncensored 3B chat model. Best fit for an 8 GB OptiPlex.",
+          "llama3.2", uncensored=True, target="optiplex", ctx=131072),
+    _gguf("gguf:qwen2.5-coder-3b", "Qwen2.5-Coder 3B (GGUF)", 3.0,
+          "Qwen/Qwen2.5-Coder-3B-Instruct-GGUF", "qwen2.5-coder-3b-instruct-q4_k_m.gguf",
+          2.1, 3.6, 0, "Small coder for 8 GB PCs. Not uncensored. Research licence.",
+          "qwen-research", target="optiplex"),
+    _gguf("gguf:qwen2.5-coder-7b", "Qwen2.5-Coder 7B (GGUF)", 7.0,
+          "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF", "qwen2.5-coder-7b-instruct-q4_k_m.gguf",
+          4.7, 6.8, 6, "Strong coder; tight on 8 GB RAM, comfortable on the main PC.",
+          "apache-2.0", target="main-pc"),
+    # --- main PC: 16 GB GPU + 32 GB RAM -----------------------------------
+    _gguf("gguf:qwen2.5-coder-14b", "Qwen2.5-Coder 14B (GGUF)", 14.0,
+          "Qwen/Qwen2.5-Coder-14B-Instruct-GGUF", "qwen2.5-coder-14b-instruct-q4_k_m.gguf",
+          9.0, 11.5, 10, "Official 14B coder. Fits a 16 GB GPU fully.", "apache-2.0"),
+    _gguf("gguf:qwen2.5-coder-14b-uncensored", "Qwen2.5-Coder 14B abliterated (GGUF)", 14.0,
+          "mradermacher/Qwen2.5-Coder-14B-Instruct-abliterated-GGUF",
+          "Qwen2.5-Coder-14B-Instruct-abliterated.Q4_K_M.gguf",
+          8.99, 11.5, 10, "Uncensored 14B coder. Fits a 16 GB GPU fully.", "apache-2.0",
+          uncensored=True),
+    _gguf("gguf:qwen2.5-coder-32b-uncensored", "Qwen2.5-Coder 32B abliterated (GGUF)", 32.0,
+          "bartowski/Qwen2.5-Coder-32B-Instruct-abliterated-GGUF",
+          "Qwen2.5-Coder-32B-Instruct-abliterated-Q4_K_M.gguf",
+          19.9, 24.0, 16, "Uncensored 32B coder. Too big for 16 GB VRAM alone — the engine "
+          "offloads part to the GPU and the rest to RAM (slower, ~24 GB RAM).",
+          "apache-2.0", uncensored=True),
+)
+
+
 #: Models that run inside C.A.R.L.A. itself, on the CPU, with no
 #: Ollama or llama.cpp installed. These are the zero-setup path.
 NATIVE_MODELS: tuple[ModelSpec, ...] = (
@@ -924,12 +976,14 @@ def _index() -> dict[str, ModelSpec]:
     index = {spec.model_id: spec for spec in BUILTIN_MODELS}
     index.update({spec.model_id: spec for spec in UPSTREAM_MODELS})
     index.update({spec.model_id: spec for spec in NATIVE_MODELS})
+    index.update({spec.model_id: spec for spec in GGUF_MODELS})
     return index
 
 
 def all_specs() -> list[ModelSpec]:
     """Every catalog entry — the hosted engines and the native ones."""
-    return list(BUILTIN_MODELS) + list(UPSTREAM_MODELS) + list(NATIVE_MODELS)
+    return (list(BUILTIN_MODELS) + list(UPSTREAM_MODELS) + list(NATIVE_MODELS)
+            + list(GGUF_MODELS))
 
 
 def find_model_spec(model_id: str) -> ModelSpec | None:
@@ -1000,7 +1054,7 @@ def resolve_model_id_for_engine(model_id: str, engine_id: str) -> str:
     if spec is None:
         return model_id
 
-    if engine_id in ("llamacpp", "llama_cpp"):
+    if engine_id in ("llamacpp", "llama_cpp", "native_gguf"):
         if spec.gguf_file:
             return spec.gguf_file
         return model_id

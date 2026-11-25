@@ -41,23 +41,29 @@ jobs:
       - name: Build exe
         run: pyinstaller PsychoCARLA.spec --noconfirm
 
-      - name: Smoke test the exe (starts it and asks it for its health page)
+      - name: Smoke test the exe, headless (starts the server inside the exe and asks for /healthz)
         id: smoke
         continue-on-error: true
         shell: pwsh
         run: |
           $env:PSYCHO_CARLA_HOME = Join-Path $env:RUNNER_TEMP "carla-smoke"
-          $p = Start-Process -FilePath "dist/PsychoCARLA/PsychoCARLA.exe" -ArgumentList "--port","8791" -PassThru
+          $p = Start-Process -FilePath "dist/PsychoCARLA/PsychoCARLA.exe" -ArgumentList "--no-window","--port","8791" -PassThru
           $ok = $false
           for ($i = 0; $i -lt 40; $i++) {
             Start-Sleep -Seconds 2
+            if ($p.HasExited) { break }
             try {
               $r = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:8791/healthz" -TimeoutSec 3
               if ($r.StatusCode -eq 200) { $ok = $true; break }
             } catch {}
           }
+          if ($ok) {
+            $s = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:8791/api/setup" -TimeoutSec 10
+            Write-Host "setup endpoint: $($s.Content)"
+          }
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
-          if (-not $ok) { throw "the exe did not answer /healthz within 80 seconds" }
+          Get-ChildItem -Recurse (Join-Path $env:RUNNER_TEMP "carla-smoke") -Filter *.log -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "--- $($_.FullName)"; Get-Content $_.FullName }
+          if (-not $ok) { throw "the exe did not answer /healthz (exited: $($p.HasExited))" }
 
       - name: Package
         shell: pwsh
@@ -83,7 +89,7 @@ jobs:
 
           **How to use:** unzip, run ``PsychoCARLA\PsychoCARLA.exe``. On first launch it creates its config; click **Auto-pick a model** (it downloads the llama.cpp engine and a model that fits your PC).
 
-          **Honest status:** the automated tests passed on Windows and the exe was built from source, but it has not been run by a person yet. Automated start-up check of the exe: **$env:SMOKE**. Voice is not included in this build (install from source with ``pip install -e ".[voice]"``). Windows SmartScreen may warn because the exe is not code-signed — choose *More info -> Run anyway* if you trust this repository.
+          **Honest status:** the automated tests passed on Windows and the exe was built from source, but it has not been run by a person yet. Automated start-up check of the exe (server starts and answers inside the bundle, no window): **$env:SMOKE**. Opening the real window has not been checked on a desktop. Voice is not included in this build (install from source with ``pip install -e ".[voice]"``). Windows SmartScreen may warn because the exe is not code-signed — choose *More info -> Run anyway* if you trust this repository.
 
           SHA-256 is in the ``.sha256`` file.
           "@

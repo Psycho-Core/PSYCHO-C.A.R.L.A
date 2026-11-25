@@ -153,3 +153,25 @@ def test_restore_reports_files_in_use_and_rolls_back(home, monkeypatch):
     r = restore_backup(home, blob)
     assert r["ok"] is False and "in use" in r["message"]
     assert (home / "psycho_carla.toml").read_text() == "keep me"      # rolled back
+
+
+def test_desktop_no_window_serves_and_logs_crashes(tmp_path, monkeypatch):
+    """The frozen exe has no console: startup errors must land in a log file."""
+    monkeypatch.setenv("PSYCHO_CARLA_HOME", str(tmp_path))
+    monkeypatch.delenv("PSYCHO_CARLA_CONFIG", raising=False)
+    from psycho_carla import desktop
+
+    desktop._log("hello from the test")
+    assert "hello from the test" in (tmp_path / "logs" / "desktop.log").read_text()
+
+    class Boom:
+        def __init__(self, *a, **k):
+            pass
+
+        def serve_only(self):
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr(desktop, "DesktopApp", Boom)
+    with pytest.raises(RuntimeError):
+        desktop.main(["--no-window", "--port", "1"])
+    assert "boom" in (tmp_path / "logs" / "desktop.log").read_text()

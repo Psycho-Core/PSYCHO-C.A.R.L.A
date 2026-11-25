@@ -41,6 +41,23 @@ DEFAULT_PORT = 8787
 WINDOW_TITLE = "PSYCHO-C.A.R.L.A."
 
 
+def log_path() -> "os.PathLike[str]":
+    """``<home>/logs/desktop.log`` — the windowed exe has no console, so errors go here."""
+    from .core.config import default_config_path
+
+    d = default_config_path().parent / "logs"
+    d.mkdir(parents=True, exist_ok=True)
+    return d / "desktop.log"
+
+
+def _log(message: str) -> None:
+    try:
+        with open(log_path(), "a", encoding="utf-8") as fh:
+            fh.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {message}\n")
+    except Exception:
+        pass
+
+
 # ---------------------------------------------------------------------------
 # Server lifecycle
 # ---------------------------------------------------------------------------
@@ -50,6 +67,9 @@ def _start_server(host: str, port: int) -> tuple[bool, str]:
     try:
         from .server.app import create_app
     except Exception as exc:  # pragma: no cover - import guard
+        import traceback
+
+        _log("could not import the server:\n" + traceback.format_exc())
         return (False, f"server unavailable: {exc}")
 
     try:
@@ -66,8 +86,10 @@ def _start_server(host: str, port: int) -> tuple[bool, str]:
                 log_level="warning",
                 access_log=False,
             )
-        except Exception:
-            pass
+        except BaseException:
+            import traceback
+
+            _log("server thread crashed:\n" + traceback.format_exc())
 
     thread = threading.Thread(target=_run, name="carla-hud", daemon=True)
     thread.start()
@@ -449,6 +471,18 @@ class DesktopApp:
 
     # -- run ---------------------------------------------------------------
 
+    def serve_only(self) -> int:
+        """Run just the HUD server, with no window (for a server PC or a smoke test)."""
+        if not self.ensure_server():
+            _log("serve_only: the HUD server could not start")
+            return 1
+        print(f"[CARLA] serving on {hud_url(self.host, self.port)} — Ctrl+C to stop")
+        try:
+            while True:
+                time.sleep(1.0)
+        except KeyboardInterrupt:
+            return 0
+
     def run(self) -> int:
         """Start the server and open the window. Blocks until closed."""
         if not self.ensure_server():
@@ -489,6 +523,7 @@ class DesktopApp:
         try:
             window = self._build_window()
         except Exception as exc:
+            _log(f"could not create the window: {exc!r}")
             print(f"[CARLA] Could not create the window: {exc}", file=sys.stderr)
             webbrowser.open(url)
             return 1
@@ -499,7 +534,8 @@ class DesktopApp:
             # No menu support on this platform — the window still works.
             try:
                 webview.start(self._install_api(), window)
-            except Exception:
+            except Exception as exc:
+                _log(f"webview.start failed: {exc!r}")
                 return 1
         return 0
 
@@ -521,7 +557,19 @@ def main(argv: list[str] | None = None) -> int:
         if idx + 1 < len(args):
             host = args[idx + 1]
 
-    return DesktopApp(host=host, port=port).run()
+    _log(f"starting (port {port}, args {args})")
+    app = DesktopApp(host=host, port=port)
+    try:
+        if "--no-window" in args:
+            return app.serve_only()
+        return app.run()
+    except SystemExit:
+        raise
+    except BaseException:
+        import traceback
+
+        _log("crashed:\n" + traceback.format_exc())
+        raise
 
 
 if __name__ == "__main__":

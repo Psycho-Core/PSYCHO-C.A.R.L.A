@@ -14,7 +14,21 @@ C.A.R.L.A. never bundles a model. You point a **tier** (`fast_tier`,
 | Remote | another PC on your network | `carla model remote HOST MODEL` |
 | Ollama / LM Studio / vLLM | separate app you run | optional; not needed |
 
-### The built-in engine (no Ollama)
+### How GGUF models run (no Ollama, no separate program)
+
+`native_gguf` loads the model **inside C.A.R.L.A.'s own process** with
+`llama-cpp-python` — nothing else runs. Start loads it into RAM, Stop / Free memory
+unloads it. Verified on Windows: model loaded in-process, no child processes,
+answered a question, memory released.
+
+- **Windows exe:** the release build bundles the CPU build of the library.
+- **From source:** `pip install llama-cpp-python --prefer-binary --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu`
+- **GPU (RX 7800 XT):** the prebuilt wheel is CPU-only. GPU offload needs a build of
+  llama-cpp-python with Vulkan (`CMAKE_ARGS="-DGGML_VULKAN=on"`, needs the Vulkan SDK and a
+  C++ compiler) — or use the separate llama-server below, whose Vulkan build is prebuilt.
+- If llama-cpp-python is missing, C.A.R.L.A. automatically falls back to the separate program:
+
+### The separate llama-server fallback
 
 ```powershell
 carla engine install --backend vulkan   # any GPU: AMD RX 7800 XT, NVIDIA, Intel

@@ -126,10 +126,26 @@ if WITH_NATIVE:
         "huggingface_hub",
     ]
 
+# llama-cpp-python runs GGUF models inside the app itself (no server program).
+# It ships native DLLs, so PyInstaller must be told to collect them all. If it is
+# not installed in the build environment the exe still works (it falls back to the
+# separate llama-server), so this is best-effort.
+extra_binaries = []
+try:
+    from PyInstaller.utils.hooks import collect_all
+
+    _d, _b, _h = collect_all("llama_cpp")
+    datas += _d
+    extra_binaries += _b
+    hiddenimports += _h
+    print(f"[spec] bundling llama_cpp: {len(_b)} binaries, {len(_d)} data files")
+except Exception as _exc:  # not installed
+    print(f"[spec] llama_cpp not bundled ({_exc})")
+
 a = Analysis(
     ["packaging/carla_app.py"],
     pathex=["src"],
-    binaries=[],
+    binaries=extra_binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],

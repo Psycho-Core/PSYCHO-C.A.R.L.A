@@ -1248,13 +1248,16 @@ def delete_gguf_model(model_id: str) -> DownloadResult:
         return DownloadResult(False, model_id, "native_gguf",
                               message="refusing to delete a file outside the models directory")
     try:
+        from .gguf_inprocess import engine as inproc
         from .llama_engine import server
 
-        if server.running and server.model_path == str(path):
+        if (server.running and server.model_path == str(path)) or (
+                inproc.running and inproc.model_path == str(path)):
             from .model_lifecycle import lifecycle
 
             lifecycle.stop()
             server.stop()          # Windows cannot delete a file the engine has open
+            inproc.unload()
     except Exception:
         pass
     try:

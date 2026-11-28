@@ -67,6 +67,12 @@ native = [
   "jinja2>=3.1",          # required by transformers' chat templates
   "numpy>=1.24",
 ]
+# --- Run GGUF models inside C.A.R.L.A.'s own process (no server program) -----
+# On Windows use the prebuilt CPU wheel instead of building from source:
+#   pip install llama-cpp-python --prefer-binary --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+gguf = [
+  "llama-cpp-python>=0.3",
+]
 # --- GPU for the native engine (DirectML: AMD/NVIDIA/Intel on Windows) -----
 # Replaces the plain onnxruntime wheel: pip uninstall onnxruntime first.
 native-gpu = [

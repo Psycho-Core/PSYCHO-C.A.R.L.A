@@ -855,8 +855,11 @@ async def models_auto(request: Request):
         best_native_model, pull_model,
     )
 
+    from ...intelligence.gguf_inprocess import available as inprocess_available
+
     gguf = best_gguf_model()
-    if gguf is not None and (find_binary() is not None or install_engine("cpu").get("ok")):
+    if gguf is not None and (inprocess_available()[0] or find_binary() is not None
+                             or install_engine("cpu").get("ok")):
         pulled = pull_model(gguf.model_id, "native_gguf")
         if pulled.ok:
             activate_gguf_model(gguf.model_id, "fast_tier")

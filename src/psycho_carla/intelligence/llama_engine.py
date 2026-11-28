@@ -375,7 +375,13 @@ atexit.register(server.stop)
 
 
 def engine_status() -> dict[str, Any]:
+    from . import gguf_inprocess
+
     exe = find_binary()
-    return {"installed": exe is not None, "binary": str(exe) if exe else "",
+    ok, detail = gguf_inprocess.available()
+    return {"inprocess": {"available": ok, "detail": detail,
+                          "gpu_offload": gguf_inprocess.gpu_offload_supported() if ok else False,
+                          **gguf_inprocess.engine.status()},
+            "installed": exe is not None, "binary": str(exe) if exe else "",
             "backend": installed_backend(exe), "backends": list(BACKENDS),
             "server": server.status()}

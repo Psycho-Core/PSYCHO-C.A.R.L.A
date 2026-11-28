@@ -28,6 +28,48 @@ jobs:
       - name: Do all catalog repos and files exist on Hugging Face?
         run: python tools/check_catalog.py
 
+  inprocess:
+    # The model runs INSIDE the Python process (llama-cpp-python) — no llama-server at all.
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      PYTHONUTF8: "1"
+      PSYCHO_CARLA_HOME: ${{ github.workspace }}\carla-home-inproc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e .
+      - name: Install llama-cpp-python (prebuilt CPU wheel)
+        run: pip install llama-cpp-python --prefer-binary --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+      - run: carla init
+      - run: carla model pull ${{ github.event.inputs.model }} --engine native_gguf
+      - name: Load the model in-process and ask a question
+        shell: pwsh
+        run: |
+          python -c "from psycho_carla.intelligence.model_manager import activate_gguf_model; r = activate_gguf_model('${{ github.event.inputs.model }}', 'fast_tier'); print(r); raise SystemExit(0 if r['ok'] else 1)"
+          carla ask "Reply with exactly five words about the sea."
+          @'
+          from psycho_carla.intelligence.model_lifecycle import ModelLifecycle
+          from psycho_carla.intelligence.gguf_inprocess import engine
+          from psycho_carla.intelligence.llama_engine import server
+          import psutil, os
+          lc = ModelLifecycle()
+          r = lc.start("${{ github.event.inputs.model }}")
+          print("start:", r)
+          assert r["ok"] and r["runtime"] == "inprocess", r
+          assert engine.running and not server.running
+          kids = [p.name() for p in psutil.Process(os.getpid()).children(recursive=True)]
+          print("child processes:", kids)
+          assert not any("llama" in k.lower() for k in kids), kids
+          print("RSS MB:", psutil.Process().memory_info().rss // 2**20)
+          print("free:", lc.free_memory())
+          assert not engine.running
+          '@ | Set-Content -Path check_inproc.py -Encoding utf8
+          python check_inproc.py
+
   check:
     runs-on: windows-latest
     timeout-minutes: 40

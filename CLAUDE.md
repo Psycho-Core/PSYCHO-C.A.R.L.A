@@ -21,7 +21,7 @@ Key facts, all verified 2026-11-13 (today):
   `docs/audits/NAME-CHANGE-AUDIT.md`. The only “Friday” left in the source is the
   weekday in one example doc — that is correct English, leave it.
 - Status: **feature/settings parity with upstream is complete.**
-  479 pytest tests pass (478 + 1 skip); end-to-end smoke is 46/46. See `docs/audits/USER-NAME-AUDIT.md`
+  490 pytest tests pass (489 + 1 skip); end-to-end smoke is 46/46. See `docs/audits/USER-NAME-AUDIT.md`
   for the most recent feature audit.
 - Not yet done (owner-side): the Windows `.exe` has never been built in this
   Linux sandbox — `PsychoCARLA.spec` + `install.ps1` are ready and must be
@@ -61,7 +61,7 @@ Key facts, all verified 2026-11-13 (today):
 | `src/psycho_carla/skills/` | 20 bundled skills, executor, sources |
 | `src/psycho_carla/bench/` | eval suites/scorers; CLI `eval --suite/--compare` |
 | `src/psycho_carla/security/`, `sandbox/`, `memory/`, `learning/`, `workflow/`, `a2a/`, `daemon/`, `mining/`, `analytics/` | supporting subsystems, all implemented |
-| `tests/` | pytest suite (479) + `tests/e2e_smoke.py` (46 checks) |
+| `tests/` | pytest suite (490) + `tests/e2e_smoke.py` (46 checks) |
 | `docs/` | `MODELS.md`, `FEATURES.md`, `ARCHITECTURE.md`, `REFERENCE.md` (long README); history in `docs/audits/` |
 | `PsychoCARLA.spec`, `install.ps1` | Windows packaging (PyInstaller onedir; installer) |
 | `voice_samples/`, `examples/`, `tools/` | samples, example workflows/skills, HUD exporter + sample generators |
@@ -76,7 +76,7 @@ pip install -e .                       # Python ≥3.10 (3.11 recommended)
 carla init                             # writes psycho_carla.toml
 carla doctor                           # environment check — expect “Ready”
 carla serve                            # HUD + API on http://127.0.0.1:8787
-python -m pytest tests/ -q             # 479 tests, expect exit 0
+python -m pytest tests/ -q             # 490 tests, expect exit 0
 ```
 
 End-to-end smoke (needs a configured channel or the bridge is disabled):
@@ -104,7 +104,12 @@ pyinstaller PsychoCARLA.spec           # → dist/PsychoCARLA/PsychoCARLA.exe
 
 ## Model plumbing to know
 
-- **Default engine is `native_gguf`** (managed llama.cpp child process); Ollama is
+- **Default engine is `native_gguf`**, which runs GGUF models **inside this process** via
+  `llama-cpp-python` (`intelligence/gguf_inprocess.py`; verified on Windows by the Engine check
+  workflow: model loaded in-process, zero child processes, Free memory releases it). If
+  llama-cpp-python is not installed it falls back to the managed `llama-server` child process
+  (`llama_engine.py`). `PSYCHO_CARLA_GGUF_RUNTIME=server|inprocess` forces one. The CPU wheel
+  has no GPU offload; a GPU needs a Vulkan/CUDA build of the library. Ollama is
   optional/legacy and absent from the starter config. The real `llama-server`
   binary has never been run in the sandbox (GitHub unreachable) — tests use a
   fake server script locally, but the **Engine check** workflow (Actions tab) has run the

@@ -1593,9 +1593,15 @@ async function mmEngineRefresh() {
   if (!info) return;
   try {
     const e = await api('/api/engine');
-    info.textContent = e.installed
-      ? 'Installed (' + (e.backend || 'unknown backend') + '). ' + (e.server.running ? 'A model is running.' : 'No model running.')
-      : 'Not installed. Needed to run GGUF models — about 30–150 MB download.';
+    const ip = e.inprocess || {};
+    if (ip.available) {
+      info.textContent = 'Runs inside C.A.R.L.A. (llama-cpp-python ' + ip.detail + (ip.gpu_offload ? ', GPU-capable' : ', CPU only') + '). ' +
+        (ip.running ? 'A model is loaded.' : 'No model loaded.') + ' The separate llama-server below is optional.';
+    } else {
+      info.textContent = e.installed
+        ? 'Using the separate llama-server (' + (e.backend || 'unknown backend') + '). ' + (e.server.running ? 'A model is running.' : 'No model running.')
+        : 'No runtime yet: install llama-cpp-python to run models inside C.A.R.L.A., or install the separate llama-server (about 30–150 MB).';
+    }
     const btn = $('mmEngineInstall');
     if (btn) btn.textContent = e.installed ? 'Reinstall / switch backend' : 'Install engine';
   } catch (err) { info.textContent = 'Could not read engine status.'; }

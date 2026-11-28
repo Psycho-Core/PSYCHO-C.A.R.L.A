@@ -11,7 +11,7 @@ in one Python package (`psycho_carla`).
 
 - **26 agents**, **96 tools**, 28 knowledge connectors, 32 messaging channels, 20 skills
 - **Runs with no model** (built-in offline responder), or with any model, **without Ollama**:
-  its own llama.cpp engine (GGUF 3B–32B, CPU or GPU), tiny in-process ONNX models,
+  GGUF models (3B–32B) run **inside the app itself** (llama.cpp library; the Windows exe is CPU, a Vulkan GPU route is in docs/MODELS.md), tiny in-process ONNX models,
   **OpenRouter** (free and paid cloud models), or a model on **another PC**
 - **Model Manager**: install engine, download, start, stop, delete, *free memory*,
   custom models (any Hugging Face repo / GGUF file), OpenRouter, CPU / GPU switch

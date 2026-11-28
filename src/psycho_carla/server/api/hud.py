@@ -715,10 +715,9 @@ async def models_recommend(request: Request, limit: int = 5):
     except Exception:
         pass
     try:
-        from ...core.energy import hardware_summary
+        from ...core.telemetry import hardware_summary
 
-        hw = hardware_summary()
-        vram_gb = float(getattr(hw, "vram_gb", 0.0) or 0.0)
+        vram_gb = round(float(hardware_summary().get("vram_total_mb", 0.0) or 0.0) / 1024.0, 1)
     except Exception:
         pass
 
@@ -957,9 +956,11 @@ async def backup_download(request: Request, include_vault: bool = False):
 @router.post("/restore")
 async def backup_restore(request: Request):
     """Restore a backup zip sent as the raw request body."""
-    from ...core.backup import restore_backup
+    from ...core.backup import MAX_UPLOAD_BYTES, restore_backup
 
     runtime = _runtime(request)
+    if int(request.headers.get("content-length") or 0) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="backup file is too large")
     result = restore_backup(runtime.config.home, await request.body())
     if not result["ok"]:
         raise HTTPException(status_code=400, detail=result["message"])

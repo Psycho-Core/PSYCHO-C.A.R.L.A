@@ -257,7 +257,8 @@ class PromptOptimizer:
             return {"agent": agent, "advice": [], "sample_count": 0}
 
         issues: list[str] = []
-        errors = [t for t in samples if t.error]
+        errors = [t for t in samples
+                  if (t.metadata or {}).get("error") or (t.response or "").startswith("Error")]
         if errors:
             issues.append(f"{len(errors)} of {len(samples)} exchanges errored.")
 

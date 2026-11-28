@@ -22,6 +22,8 @@ CONFIG_FILE = "psycho_carla.toml"
 DB_NAMES = ("memory.db", "sessions.db", "knowledge.db")
 EXTRA_FILES = ("approvals.json",)
 VAULT_FILES = ("vault.enc", "vault.key")
+MAX_UNPACKED_BYTES = 4 * 1024**3        # a real backup is megabytes; refuse zip bombs
+MAX_UPLOAD_BYTES = 1024**3
 
 
 def _data_dir(home: Path) -> Path:
@@ -97,6 +99,8 @@ def restore_backup(home: str | Path, data: bytes) -> dict:
     except zipfile.BadZipFile:
         return {"ok": False, "message": "that is not a valid backup file"}
     names = zf.namelist()
+    if sum(i.file_size for i in zf.infolist()) > MAX_UNPACKED_BYTES:
+        return {"ok": False, "message": "that backup is unreasonably large (zip bomb?)"}
     if "BACKUP.txt" not in names:
         return {"ok": False, "message": "that zip is not a PSYCHO-C.A.R.L.A. backup"}
     has_vault = any(n in VAULT_FILES for n in names)

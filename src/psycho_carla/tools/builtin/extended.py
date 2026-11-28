@@ -38,24 +38,18 @@ def _get_json(url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
 def _check_url(url: str) -> str | None:
     """Return an error string if the URL is disallowed, else None.
 
-    The SSRF guard applies to remote http(s) targets. Local pages and
-    ``data:`` URLs are legitimate browser-test fixtures, so they pass.
+    Refuses loopback, private-network and link-local targets (the local C.A.R.L.A.
+    server, your router, cloud metadata endpoints) and every scheme except http(s)
+    and ``data:``. An agent must not be able to reach its own API through its own
+    HTTP tool — that would bypass safe mode.
     """
-    import ipaddress
     from urllib.parse import urlparse
 
     parsed = urlparse(url or "")
+    if parsed.scheme == "data":
+        return None
     if parsed.scheme not in ("http", "https"):
-        return None
-    host = parsed.hostname or ""
-    try:
-        ip = ipaddress.ip_address(host)
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
-            return None
-    except ValueError:
-        pass
-    if host in ("localhost",):
-        return None
+        return f"scheme '{parsed.scheme or '(none)'}' is not allowed"
     try:
         from ...security.ssrf import validate_url
 
@@ -69,7 +63,11 @@ def _request(method: str, url: str, headers: dict[str, str] | None = None,
              data: Any = None, params: dict[str, Any] | None = None):
     import httpx
 
-    with httpx.Client(timeout=20.0, follow_redirects=True) as client:
+    from ...security.ssrf import request_hook
+
+    # The hook re-validates every redirect hop, not just the first URL.
+    with httpx.Client(timeout=20.0, follow_redirects=True,
+                      event_hooks={"request": [request_hook]}) as client:
         return client.request(method, url, headers=headers or {},
                               data=data, params=params or {})
 

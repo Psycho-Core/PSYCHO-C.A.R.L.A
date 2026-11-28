@@ -26,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from ..core.config import CarlaConfig, load_config
 from ..core.runtime import CarlaRuntime
 from .api import channels, hud, openai_compat, upstream
-from .auth import check_key, extract_key, resolve_auth
+from .auth import check_key, extract_key, is_loopback, resolve_auth
 from .hub import WebSocketHub
 
 WEB_DIR = Path(__file__).parent / "web"
@@ -105,13 +105,36 @@ def create_app(
         lifespan=lifespan,
     )
 
+    # -- Browser-origin safety (see server/origin.py) --------------------------- #
+    from .origin import (
+        LOOPBACK_ORIGIN, SAFE_METHODS, extra_origins, host_allowed, origin_allowed,
+        same_origin,
+    )
+
+    loopback_bind = is_loopback(cfg.server.host)
+    extra = extra_origins(cfg.server.cors_origins, loopback_bind)
+    app.state.allowed_origins = extra
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=cfg.server.cors_origins or ["*"],
+        allow_origins=[o for o in extra if o != "*"],
+        allow_origin_regex=LOOPBACK_ORIGIN.pattern,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def _origin_guard(request: Request, call_next):
+        # A web page open in the browser must not be able to drive this server.
+        if loopback_bind and not host_allowed(request.headers.get("host", "")):
+            return JSONResponse({"detail": "Host not allowed"}, status_code=400)
+        origin = request.headers.get("origin", "")
+        if (request.method not in SAFE_METHODS and origin
+                and not origin_allowed(origin, extra)
+                and not same_origin(origin, request.headers.get("host", ""))):
+            return JSONResponse({"detail": "Cross-site request refused"}, status_code=403)
+        return await call_next(request)
 
     # -- Authentication -------------------------------------------------------- #
     # Refuse to expose an agent (with shell + file tools) on the network
@@ -172,7 +195,15 @@ def create_app(
     # -- WebSocket ------------------------------------------------------------ #
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket):
-        # WebSockets cannot use the HTTP auth middleware, so check here.
+        # WebSockets bypass the HTTP middleware: refuse foreign pages (cross-site
+        # WebSocket hijacking) and non-loopback Host headers here.
+        origin = websocket.headers.get("origin", "")
+        if (not origin_allowed(origin, extra)
+                and not same_origin(origin, websocket.headers.get("host", ""))) or (
+                loopback_bind and not host_allowed(websocket.headers.get("host", ""))):
+            await websocket.close(code=4403, reason="Origin not allowed")
+            return
+        # ...and the API key check, if one is configured.
         if auth.enabled:
             presented = extract_key(
                 authorization=websocket.headers.get("authorization", ""),

@@ -40,10 +40,12 @@ logger = logging.getLogger(__name__)
 def _pid_file() -> Path:
     """Where the daemon PID is recorded."""
     try:
-        from ..utils.paths import config_dir
+        from ..utils.paths import carla_home
+
+        home = carla_home()
     except Exception:  # pragma: no cover - defensive
-        config_dir = Path.home() / ".psycho_carla"
-    return Path(config_dir) / "slack-daemon.pid"
+        home = Path.home() / ".psycho_carla"
+    return Path(home) / "slack-daemon.pid"
 
 
 def to_slack_fmt(text: str) -> str:

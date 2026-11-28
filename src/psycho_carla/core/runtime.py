@@ -319,7 +319,7 @@ class CarlaRuntime:
                     job.schedule,
                     agent=job.agent,
                     prompt=job.prompt,
-                    tier=job.tier or None,
+                    tier=job.tier or "",
                     speak=job.speak,
                 )
             except Exception:
@@ -344,9 +344,8 @@ class CarlaRuntime:
 
         if surface in ("", "prompt", "intelligence"):
             if _enabled("intelligence"):
-                results["prompt"] = self.optimizer.optimize_prompt(
-                    agent=kwargs.get("agent", "")
-                ).to_dict()
+                suggestion = self.optimizer.optimize_prompt(agent=kwargs.get("agent", ""))
+                results["prompt"] = suggestion.to_dict() if suggestion else None
         if surface in ("", "routing"):
             if _enabled("routing"):
                 policies = self.optimizer.optimize_routing(

@@ -58,9 +58,9 @@ def layers_for(n_gpu_layers: int | str, model_gb: float) -> int:
 
 def _vram_gb() -> float:
     try:
-        from ..core.energy import hardware_summary
+        from ..core.telemetry import hardware_summary
 
-        return float(getattr(hardware_summary(), "vram_gb", 0.0) or 0.0)
+        return float(hardware_summary().get("vram_total_mb", 0.0) or 0.0) / 1024.0
     except Exception:
         return 0.0
 
@@ -106,11 +106,20 @@ class InProcessGguf:
             self.model_path, self.n_gpu_layers, self.loaded_at = str(path), ngl, time.time()
             return {"ok": True, "gpu_layers": ngl, "message": f"{path.name} loaded in-process"}
 
-    def unload(self) -> bool:
-        with self._lock:
-            was = self._llm is not None
-            self._unload_locked()
-            return was
+    def unload(self, wait: float = 120.0) -> bool:
+        """Unload the model. Waits (up to ``wait`` s) for an answer in progress to finish —
+        closing a llama.cpp context mid-generation can crash the whole process."""
+        got = self._gen_lock.acquire(timeout=wait)
+        try:
+            with self._lock:
+                was = self._llm is not None
+                if was and not got:
+                    logger.warning("model is still generating after %.0fs; unloading anyway", wait)
+                self._unload_locked()
+                return was
+        finally:
+            if got:
+                self._gen_lock.release()
 
     def _unload_locked(self) -> None:
         llm, self._llm = self._llm, None

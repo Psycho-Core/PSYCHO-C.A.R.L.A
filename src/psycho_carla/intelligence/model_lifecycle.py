@@ -53,6 +53,7 @@ class ModelLifecycle:
         self._adapter: Any = None
         self._adapter_model_id: str = ""
         self._gguf_id: str = ""
+        self._gguf_runtime: str = ""
         self._states: dict[str, ModelState] = {}
 
     # ------------------------------------------------------------------
@@ -181,27 +182,40 @@ class ModelLifecycle:
         }
 
     def _start_gguf(self, model_id: str, path: Any) -> dict[str, Any]:
+        """Start a GGUF model: in this process if llama-cpp-python is there, else llama-server."""
+        from psycho_carla.intelligence.gguf_inprocess import engine as inproc
         from psycho_carla.intelligence.llama_engine import server
+        from psycho_carla.providers.adapters.native_gguf import choose_runtime
         from psycho_carla.providers.adapters.native_onnx import configured_device
 
         with self._lock:
             if self._adapter is not None:
                 self._stop_locked()
-            result = server.start(str(path), device=configured_device())
+            device = configured_device()
+            if choose_runtime("auto") == "inprocess":
+                server.stop()
+                result = inproc.load(str(path), gpu_layers=0 if device == "cpu" else "auto")
+                runtime = "inprocess"
+            else:
+                inproc.unload()
+                result = server.start(str(path), device=device)
+                runtime = "server"
             if result.get("ok"):
-                self._gguf_id = model_id
-            return {"ok": bool(result.get("ok")), "model_id": model_id,
+                self._gguf_id, self._gguf_runtime = model_id, runtime
+            return {"ok": bool(result.get("ok")), "model_id": model_id, "runtime": runtime,
                     "message": result.get("message", ""),
                     "already_running": bool(result.get("already_running"))}
 
     def stop(self, model_id: str = "") -> dict[str, Any]:
         """Unload the running model and free the memory."""
+        from psycho_carla.intelligence.gguf_inprocess import engine as inproc
         from psycho_carla.intelligence.llama_engine import server
 
         with self._lock:
             if self._gguf_id and (not model_id or model_id == self._gguf_id):
                 name, self._gguf_id = self._gguf_id, ""
                 server.stop()
+                inproc.unload()
                 return {"ok": True, "model_id": name, "message": f"'{name}' stopped",
                         "was_running": True}
             if self._adapter is None:
@@ -245,12 +259,16 @@ class ModelLifecycle:
 
     def status(self) -> dict[str, Any]:
         """The running model, if any."""
+        from psycho_carla.intelligence.gguf_inprocess import engine as inproc
         from psycho_carla.intelligence.llama_engine import server
 
         with self._lock:
+            if self._gguf_id and inproc.running:
+                return {"running": True, "model_id": self._gguf_id, "engine": "native_gguf",
+                        "runtime": "inprocess", "device": f"gpu layers: {inproc.n_gpu_layers}"}
             if self._gguf_id and server.running:
                 return {"running": True, "model_id": self._gguf_id,
-                        "engine": "native_gguf",
+                        "engine": "native_gguf", "runtime": "server",
                         "device": f"gpu layers: {server.gpu_layers}"}
             if self._adapter is None:
                 return {"running": False, "model_id": ""}
@@ -283,13 +301,15 @@ class ModelLifecycle:
 
         before = _avail()
         released: list[str] = []
+        from psycho_carla.intelligence.gguf_inprocess import engine as inproc
         from psycho_carla.intelligence.llama_engine import server
 
         with self._lock:
-            if self._gguf_id or server.running:
-                released.append(self._gguf_id or "llama.cpp engine")
+            if self._gguf_id or server.running or inproc.running:
+                released.append(self._gguf_id or "GGUF model")
                 self._gguf_id = ""
                 server.stop()
+                inproc.unload()
             if self._adapter is not None:
                 released.append(self._adapter_model_id)
                 self._stop_locked()

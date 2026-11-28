@@ -47,6 +47,7 @@ def fake_engine(tmp_path, monkeypatch):
     model = tmp_path / "tiny.gguf"
     model.write_bytes(b"GGUF" + b"\0" * 1024)
     monkeypatch.setenv("PSYCHO_CARLA_LLAMA_SERVER", str(exe))
+    monkeypatch.setenv("PSYCHO_CARLA_GGUF_RUNTIME", "server")
     monkeypatch.setenv("PSYCHO_CARLA_HOME", str(tmp_path / "home"))
     yield exe, model
     le.server.stop()
@@ -113,7 +114,7 @@ def test_real_process_lifecycle_and_adapter(fake_engine):
     from psycho_carla.providers.base import Message
 
     ad = NativeGgufAdapter({"model_path": str(model), "device": "cpu"})
-    assert ad.health() == (True, "ready")
+    assert ad.health() == (True, "ready (server)")
     out = ad.generate([Message(role="user", content="ping")], "fast_tier")
     assert "pong from fake llama-server" in out.text
     assert le.server.stop() is True and not le.server.running

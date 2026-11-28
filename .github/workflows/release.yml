@@ -32,6 +32,9 @@ jobs:
       - name: Install
         run: pip install -e ".[packaging,desktop,native]"   # native only for the tests; the spec leaves it out of the exe
 
+      - name: Install llama-cpp-python (runs models inside the exe; prebuilt CPU wheel)
+        run: pip install llama-cpp-python --prefer-binary --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+
       - name: Tests
         run: |
           pip install pytest pytest-asyncio
@@ -57,13 +60,18 @@ jobs:
               if ($r.StatusCode -eq 200) { $ok = $true; break }
             } catch {}
           }
+          $inproc = $false
           if ($ok) {
             $s = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:8791/api/setup" -TimeoutSec 10
             Write-Host "setup endpoint: $($s.Content)"
+            $e = Invoke-RestMethod -Uri "http://127.0.0.1:8791/api/engine" -TimeoutSec 10
+            Write-Host "engine: $($e | ConvertTo-Json -Depth 5 -Compress)"
+            $inproc = [bool]$e.inprocess.available
           }
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
           Get-ChildItem -Recurse (Join-Path $env:RUNNER_TEMP "carla-smoke") -Filter *.log -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "--- $($_.FullName)"; Get-Content $_.FullName }
           if (-not $ok) { throw "the exe did not answer /healthz (exited: $($p.HasExited))" }
+          if (-not $inproc) { throw "the exe started, but the in-process GGUF engine (llama_cpp) is not usable inside it" }
 
       - name: Package
         shell: pwsh
@@ -87,9 +95,9 @@ jobs:
           $notes = @"
           Windows 11 build of PSYCHO-C.A.R.L.A., built automatically by GitHub Actions from this repository.
 
-          **How to use:** unzip, run ``PsychoCARLA\PsychoCARLA.exe``. On first launch it creates its config; click **Auto-pick a model** (it downloads the llama.cpp engine and a model that fits your PC).
+          **How to use:** unzip, run ``PsychoCARLA\PsychoCARLA.exe``. On first launch it creates its config; click **Auto-pick a model** (it downloads a model that fits your PC and runs it inside the app - no Ollama, no separate server). CPU build: your RX 7800 XT is not used by this build.
 
-          **Honest status:** the automated tests passed on Windows and the exe was built from source, but it has not been run by a person yet. Automated start-up check of the exe (server starts and answers inside the bundle, no window): **$env:SMOKE**. Opening the real window has not been checked on a desktop. Voice is not included in this build (install from source with ``pip install -e ".[voice]"``). Windows SmartScreen may warn because the exe is not code-signed — choose *More info -> Run anyway* if you trust this repository.
+          **Honest status:** the automated tests passed on Windows and the exe was built from source, but it has not been run by a person yet. Automated start-up check of the exe (it starts, answers, and its built-in in-process GGUF engine loads; no window): **$env:SMOKE**. Opening the real window has not been checked on a desktop. Voice is not included in this build (install from source with ``pip install -e ".[voice]"``). Windows SmartScreen may warn because the exe is not code-signed — choose *More info -> Run anyway* if you trust this repository.
 
           SHA-256 is in the ``.sha256`` file.
           "@

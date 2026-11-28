@@ -21,7 +21,7 @@ Key facts, all verified 2026-11-13 (today):
   `docs/audits/NAME-CHANGE-AUDIT.md`. The only “Friday” left in the source is the
   weekday in one example doc — that is correct English, leave it.
 - Status: **feature/settings parity with upstream is complete.**
-  490 pytest tests pass (489 + 1 skip); end-to-end smoke is 46/46. See `docs/audits/USER-NAME-AUDIT.md`
+  528 pytest tests pass (527 + 1 skip); end-to-end smoke is 46/46. See `docs/audits/USER-NAME-AUDIT.md`
   for the most recent feature audit.
 - Not yet done (owner-side): the Windows `.exe` has never been built in this
   Linux sandbox — `PsychoCARLA.spec` + `install.ps1` are ready and must be
@@ -61,7 +61,7 @@ Key facts, all verified 2026-11-13 (today):
 | `src/psycho_carla/skills/` | 20 bundled skills, executor, sources |
 | `src/psycho_carla/bench/` | eval suites/scorers; CLI `eval --suite/--compare` |
 | `src/psycho_carla/security/`, `sandbox/`, `memory/`, `learning/`, `workflow/`, `a2a/`, `daemon/`, `mining/`, `analytics/` | supporting subsystems, all implemented |
-| `tests/` | pytest suite (490) + `tests/e2e_smoke.py` (46 checks) |
+| `tests/` | pytest suite (528) + `tests/e2e_smoke.py` (46 checks) |
 | `docs/` | `MODELS.md`, `FEATURES.md`, `ARCHITECTURE.md`, `REFERENCE.md` (long README); history in `docs/audits/` |
 | `PsychoCARLA.spec`, `install.ps1` | Windows packaging (PyInstaller onedir; installer) |
 | `voice_samples/`, `examples/`, `tools/` | samples, example workflows/skills, HUD exporter + sample generators |
@@ -72,11 +72,11 @@ Package name in `pyproject.toml` is `psycho-carla`. Entry points:
 ## Run / verify
 
 ```bash
-pip install -e .                       # Python ≥3.10 (3.11 recommended)
+pip install -e .                       # Python ≥3.11
 carla init                             # writes psycho_carla.toml
 carla doctor                           # environment check — expect “Ready”
 carla serve                            # HUD + API on http://127.0.0.1:8787
-python -m pytest tests/ -q             # 490 tests, expect exit 0
+python -m pytest tests/ -q             # 528 tests, expect exit 0
 ```
 
 End-to-end smoke (needs a configured channel or the bridge is disabled):
@@ -138,6 +138,14 @@ pyinstaller PsychoCARLA.spec           # → dist/PsychoCARLA/PsychoCARLA.exe
   `PsychoCARLA.exe --no-window` serves without a window. The release job smoke-tests
   the exe headless on Windows; the real window has not been checked by a person.
   First launch calls `ensure_config()`.
+
+- **Web security** (`server/origin.py`, `docs/SECURITY.md`): the server checks `Origin`/`Host`
+  on every request and on `/ws`; never add `allow_origins=["*"]` back. `http_request`,
+  `web_fetch` and the browser tools must stay SSRF-guarded (`security/ssrf.py`, including the
+  per-redirect `request_hook`) or an agent can reach `/api/tools/*/execute` (which runs with
+  `approved=True`) and bypass safe mode. Run `mypy src/psycho_carla` now and then: the audit
+  found ~10 real bugs that way (calls to functions that did not exist).
+- Python ≥3.11 (`tomllib`).
 
 ## Traps previous sessions hit (don’t repeat)
 

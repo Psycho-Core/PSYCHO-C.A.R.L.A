@@ -464,7 +464,16 @@ async def agents_errors(request: Request):
 async def recommended_model(request: Request):
     from ...intelligence.model_catalog import recommend_models
 
-    recommendations = recommend_models()
+    ram_gb = vram_gb = 0.0
+    try:
+        from ...core.telemetry import hardware_summary
+
+        hw = hardware_summary()
+        ram_gb = float(hw.get("ram_total_mb", 0.0) or 0.0) / 1024.0
+        vram_gb = float(hw.get("vram_total_mb", 0.0) or 0.0) / 1024.0
+    except Exception:
+        pass
+    recommendations = recommend_models(ram_gb or 8.0, vram_gb)
     return {"recommendations": [
         r.to_dict() if hasattr(r, "to_dict") else str(r)
         for r in recommendations

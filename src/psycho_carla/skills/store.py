@@ -143,14 +143,14 @@ class SkillStore:
             self._copy_tree(src_dir, self.root / target_name, overwrite=overwrite)
         elif kind == "git":
             target_name = name or _name_from_git(location)
-            self._install_from_git(location, ref, self.root / target_name, overwrite)
+            self._install_from_git(location, ref, self.root / target_name, overwrite=overwrite)
             skill = parse_skill(self.root / target_name / SKILL_FILENAME, source=location)
             target_name = name or skill.name or target_name
             if target_name != self.root.name:
                 pass
         else:
             target_name = name or _name_from_url(location)
-            self._install_from_url(location, self.root / target_name, overwrite)
+            self._install_from_url(location, self.root / target_name, overwrite=overwrite)
             skill = parse_skill(self.root / target_name / SKILL_FILENAME, source=location)
 
         errors = validate_skill(skill, strict=False)

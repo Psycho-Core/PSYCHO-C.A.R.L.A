@@ -410,7 +410,9 @@ host              = "127.0.0.1"
 port              = 8787
 agent             = "orchestrator"
 workers           = 1
-cors_origins      = ["*"]
+# Extra web origins allowed to call the API from a browser. The HUD itself
+# (localhost / 127.0.0.1) always works. "*" is ignored on a localhost bind.
+cors_origins      = []
 openai_compat_prefix = "/v1"
 
 # An exposed agent carries shell and file tools, so the server refuses to

@@ -7,7 +7,7 @@ name = "psycho-carla"
 version = "1.0.0"
 description = "PSYCHO-C.A.R.L.A. (Coding, Automated Reasoning, & Language Assistant) — Personal AI on Personal Devices. A model-agnostic local-first agent framework with a C.A.R.L.A. persona, CPU-only dual-channel voice, and a holographic command HUD."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "PSYCHO-C.A.R.L.A. Project" }]
@@ -16,7 +16,6 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Operating System :: Microsoft :: Windows 11",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -148,7 +147,7 @@ psycho_carla = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B"]
@@ -163,6 +162,6 @@ python_files = ["test_*.py"]
 addopts = "-q"
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 ignore_missing_imports = true
 warn_unused_configs = true

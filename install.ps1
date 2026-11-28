@@ -59,7 +59,7 @@ foreach ($cand in $candidates) {
         $ver = & $exe --version 2>&1
         if ($ver -match "Python (\d+)\.(\d+)") {
             $major = [int]$Matches[1]; $minor = [int]$Matches[2]
-            if ($major -eq 3 -and $minor -ge 10) {
+            if ($major -eq 3 -and $minor -ge 11) {
                 if ($cand -eq "py") {
                     $python = @("py", "-$PythonVersion")
                 } else {
@@ -72,7 +72,7 @@ foreach ($cand in $candidates) {
     } catch { }
 }
 if (-not $python) {
-    Write-Err "Python 3.10+ not found. Install from https://www.python.org/downloads/windows/"
+    Write-Err "Python 3.11+ not found. Install from https://www.python.org/downloads/windows/"
     exit 1
 }
 

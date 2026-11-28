@@ -137,9 +137,9 @@ def channel_status() -> str:
 
 def channel_connect(name: str) -> str:
     """Note how to connect a channel (OAuth/token driven, no side effects)."""
-    from ...channels import get_channel_class
+    from ...channels import available_channels
 
-    if get_channel_class(name) is None:
+    if name not in available_channels():
         return f"Error: unknown channel '{name}'."
     return (
         f"Channel '{name}' is registered. Configure its token under "

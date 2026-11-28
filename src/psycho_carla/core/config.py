@@ -380,7 +380,8 @@ class ServerConfig:
     a2a_token: str = ""
     model: str = ""
     workers: int = 1
-    cors_origins: list[str] = field(default_factory=lambda: ["*"])
+    #: Extra browser origins allowed to call the API (the HUD itself is always allowed).
+    cors_origins: list[str] = field(default_factory=list)
     openai_compat_prefix: str = "/v1"
 
 

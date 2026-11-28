@@ -201,7 +201,12 @@ def install_engine(backend: str = "vulkan", progress: ProgressFn | None = None) 
             import tarfile
 
             with tarfile.open(archive) as tf:
-                tf.extractall(folder, filter="data")
+                root = folder.resolve()
+                for m in tf.getmembers():           # refuse paths/links that escape the folder
+                    target = (folder / m.name).resolve()
+                    if (root != target and root not in target.parents) or m.issym() or m.islnk():
+                        raise ValueError(f"unsafe entry in archive: {m.name}")
+                tf.extractall(folder)
         archive.unlink(missing_ok=True)
         binary = find_binary()
         if binary is None:
@@ -262,6 +267,8 @@ class LlamaServer:
         self.port = 0
         self.started_at = 0.0
         self.gpu_layers = 0
+        self.log_path = Path(os.devnull)
+        self._log: Any = None
 
     @property
     def running(self) -> bool:
@@ -300,9 +307,13 @@ class LlamaServer:
             port = _free_port()
             cmd = build_args(exe, model, port, ctx=ctx, threads=threads, gpu_layers=ngl)
             flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            # Log to a file: an undrained PIPE fills up (llama-server is chatty) and
+            # then blocks the server mid-answer.
+            self.log_path = _log_file()
             try:
+                self._log = open(self.log_path, "wb")
                 self._proc = subprocess.Popen(
-                    cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, creationflags=flags,
+                    cmd, stdout=self._log, stderr=subprocess.STDOUT, creationflags=flags,
                 )
             except OSError as exc:
                 return {"ok": False, "message": f"could not start llama-server: {exc}"}
@@ -323,7 +334,7 @@ class LlamaServer:
             if self._proc is None or self._proc.poll() is not None:
                 err = ""
                 try:
-                    err = (self._proc.stderr.read() or b"").decode("utf-8", "replace")[-400:]
+                    err = self.log_path.read_bytes().decode("utf-8", "replace")[-400:]
                 except Exception:
                     pass
                 return False, f"llama-server exited while loading the model. {err}".strip()
@@ -344,6 +355,12 @@ class LlamaServer:
     def _stop_locked(self) -> None:
         proc, self._proc = self._proc, None
         self.model_path, self.port, self.started_at = "", 0, 0.0
+        log, self._log = self._log, None
+        if log is not None:
+            try:
+                log.close()
+            except Exception:
+                pass
         if proc is None:
             return
         try:
@@ -361,11 +378,22 @@ class LlamaServer:
                 "base_url": self.base_url, "gpu_layers": self.gpu_layers}
 
 
+def _log_file() -> Path:
+    try:
+        from ..core.config import load_config
+
+        d = Path(load_config().home) / "logs"
+        d.mkdir(parents=True, exist_ok=True)
+        return d / "llama-server.log"
+    except Exception:
+        return Path(os.devnull)
+
+
 def _vram_gb() -> float:
     try:
-        from ..core.energy import hardware_summary
+        from ..core.telemetry import hardware_summary
 
-        return float(getattr(hardware_summary(), "vram_gb", 0.0) or 0.0)
+        return float(hardware_summary().get("vram_total_mb", 0.0) or 0.0) / 1024.0
     except Exception:
         return 0.0
 

@@ -89,11 +89,12 @@ def request_json(
     method: str = "GET",
     headers: dict[str, str] | None = None,
     json_body: Any = None,
+    data: bytes | None = None,
     timeout: float = DEFAULT_TIMEOUT,
 ) -> Any:
     """Make a request and parse the response as JSON."""
     status, body = request(
-        url, method=method, headers=headers, json_body=json_body, timeout=timeout
+        url, method=method, headers=headers, json_body=json_body, data=data, timeout=timeout
     )
     if not body.strip():
         return {}

@@ -71,3 +71,12 @@ def is_safe_url(url: str, *, allow_private: bool = False) -> bool:
 
 
 __all__ = ["SSRFError", "is_safe_url", "validate_url"]
+
+
+def request_hook(request) -> None:
+    """httpx ``request`` event hook: validate every request, including each redirect hop.
+
+    Validating only the first URL lets a public page answer ``302 -> http://127.0.0.1/…``
+    and reach the local server (and its shell tool) anyway.
+    """
+    validate_url(str(request.url))

@@ -202,6 +202,17 @@ class DesktopApp:
 
     # -- the menu ----------------------------------------------------------
 
+    def _open(self, path: str) -> None:
+        """Send the HUD to a route (``/models``, ``/voice``, ``/console``)."""
+        route = (path or "").strip("/") or "console"
+        try:
+            if route == "voice":                      # a separate page
+                self.window.load_url(hud_url(self.host, self.port, "/voice"))
+            else:                                     # a panel inside the console
+                self.window.evaluate_js("window.location.hash = '%s';" % route)
+        except Exception:
+            pass
+
     def _menu(self) -> Any:
         """Build the native menu bar.
 
@@ -211,14 +222,7 @@ class DesktopApp:
         """
         import webview
 
-        def _open(path: str) -> None:
-            """Send the HUD to a route."""
-            try:
-                self.window.evaluate_js(
-                    "window.location.hash = '%s';" % path
-                )
-            except Exception:
-                pass
+        _open = self._open
 
         def _models_menu() -> Any:
             """The Models submenu, built from the live catalogue."""
@@ -427,10 +431,10 @@ class DesktopApp:
             logs.mkdir(parents=True, exist_ok=True)
             if sys.platform == "win32":
                 os.startfile(str(logs))  # type: ignore[attr-defined]
-            elif sys.platform == "darwin":
-                os.system(f'open "{logs}"')
             else:
-                os.system(f'xdg-open "{logs}"')
+                import subprocess
+
+                subprocess.Popen(["open" if sys.platform == "darwin" else "xdg-open", str(logs)])
         except Exception:
             self._notify("Could not open the logs folder.")
 

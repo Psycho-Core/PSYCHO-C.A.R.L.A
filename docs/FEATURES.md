@@ -27,6 +27,8 @@ smoke suite is 46/46 (see `docs/audits/PARITY-AUDIT-7.md`,
   first-class metrics), and an efficiency summary in HUD, CLI, and API.
 
 ## A2. Intelligence & models
+- **Web/API hardening**: origin allow-list, cross-site write guard, Host check, WebSocket origin
+  check, SSRF-guarded HTTP tools with per-redirect validation. See `docs/SECURITY.md`.
 - **Safe mode** (default on): shell/code/file-write/delete/patch/commit tool calls
   are queued in the HUD **Approvals** panel instead of running; an agent cannot
   approve its own request. `[security] enforce_tool_confirmation = false` or the

@@ -214,10 +214,16 @@ def web_fetch(url: str, max_chars: int = 8000) -> str:
             return f"Error: URL refused by SSRF protection: {exc}"
 
     try:
+        hooks = {}
+        if _CONFIG.get("ssrf_protection", True):
+            from ...security.ssrf import request_hook
+
+            hooks = {"request": [request_hook]}        # re-check every redirect hop
         with httpx.Client(
             timeout=_CONFIG["timeout"],
             follow_redirects=True,
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+            event_hooks=hooks,
         ) as client:
             resp = client.get(url)
             resp.raise_for_status()
